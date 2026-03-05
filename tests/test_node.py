@@ -1,19 +1,19 @@
 """
-test_node.py - VFSNode 测试
+test_node.py - AVMNode test
 """
 
 import pytest
 from datetime import datetime
 
-from avm.node import VFSNode, NodeDiff, NodeType, Permission
+from avm.node import AVMNode, NodeDiff, NodeType, Permission
 
 
-class TestVFSNode:
-    """VFSNode 基础测试"""
+class TestAVMNode:
+    """AVMNode 基础test"""
     
     def test_create_node(self):
-        """创建节点"""
-        node = VFSNode(
+        """createnode"""
+        node = AVMNode(
             path="/memory/test.md",
             content="# Test\n\nContent here.",
         )
@@ -24,41 +24,41 @@ class TestVFSNode:
         assert node.node_type == NodeType.FILE
     
     def test_writable_path(self):
-        """可写路径检测"""
-        memory_node = VFSNode(path="/memory/test.md")
+        """可写path检测"""
+        memory_node = AVMNode(path="/memory/test.md")
         assert memory_node.is_writable is True
         
-        research_node = VFSNode(path="/research/AAPL.md")
+        research_node = AVMNode(path="/research/AAPL.md")
         assert research_node.is_writable is False
         
-        live_node = VFSNode(path="/live/positions.md")
+        live_node = AVMNode(path="/live/positions.md")
         assert live_node.is_writable is False
     
     def test_live_node(self):
-        """Live 节点检测"""
-        live_node = VFSNode(
+        """Live node检测"""
+        live_node = AVMNode(
             path="/live/positions.md",
             meta={"ttl_seconds": 60}
         )
         assert live_node.is_live is True
         assert live_node.ttl_seconds == 60
         
-        static_node = VFSNode(path="/research/AAPL.md")
+        static_node = AVMNode(path="/research/AAPL.md")
         assert static_node.is_live is False
         assert static_node.ttl_seconds is None
     
     def test_content_hash(self):
-        """内容哈希"""
-        node1 = VFSNode(path="/memory/a.md", content="Hello")
-        node2 = VFSNode(path="/memory/b.md", content="Hello")
-        node3 = VFSNode(path="/memory/c.md", content="World")
+        """content哈希"""
+        node1 = AVMNode(path="/memory/a.md", content="Hello")
+        node2 = AVMNode(path="/memory/b.md", content="Hello")
+        node3 = AVMNode(path="/memory/c.md", content="World")
         
         assert node1.content_hash == node2.content_hash
         assert node1.content_hash != node3.content_hash
     
     def test_to_dict_from_dict(self):
-        """序列化/反序列化"""
-        node = VFSNode(
+        """序column化/反序column化"""
+        node = AVMNode(
             path="/memory/test.md",
             content="Content",
             meta={"key": "value"},
@@ -66,7 +66,7 @@ class TestVFSNode:
         )
         
         data = node.to_dict()
-        restored = VFSNode.from_dict(data)
+        restored = AVMNode.from_dict(data)
         
         assert restored.path == node.path
         assert restored.content == node.content
@@ -75,10 +75,10 @@ class TestVFSNode:
 
 
 class TestNodeDiff:
-    """NodeDiff 测试"""
+    """NodeDiff test"""
     
     def test_create_diff(self):
-        """创建 diff"""
+        """create diff"""
         diff = NodeDiff(
             node_path="/memory/test.md",
             version=2,
@@ -93,7 +93,7 @@ class TestNodeDiff:
         assert diff.change_type == "update"
     
     def test_diff_to_dict(self):
-        """Diff 序列化"""
+        """Diff 序column化"""
         diff = NodeDiff(
             node_path="/memory/test.md",
             version=1,

@@ -4,12 +4,12 @@ vfs/providers/memory.py - Bot memory区 Provider
 
 from typing import Dict, Optional
 
-from .base import VFSProvider
-from ..node import VFSNode, NodeType
-from ..store import VFSStore
+from .base import AVMProvider
+from ..node import AVMNode, NodeType
+from ..store import AVMStore
 
 
-class MemoryProvider(VFSProvider):
+class MemoryProvider(AVMProvider):
     """
     Bot memory区
     
@@ -19,22 +19,22 @@ class MemoryProvider(VFSProvider):
     usage:
         - Bot 自己的observation和学习
         - 交易experiencelesson
-        - 用户preferencerecord
+        - userpreferencerecord
     """
     
-    def __init__(self, store: VFSStore):
+    def __init__(self, store: AVMStore):
         super().__init__(store, "/memory")
     
-    def fetch(self, path: str) -> Optional[VFSNode]:
+    def fetch(self, path: str) -> Optional[AVMNode]:
         """Memory 区directlyfrom store read，不requiresexternal fetch"""
         return self.store.get_node(path)
     
-    def write(self, path: str, content: str, meta: Dict = None) -> VFSNode:
+    def write(self, path: str, content: str, meta: Dict = None) -> AVMNode:
         """writememory"""
         if not path.startswith("/memory"):
             raise PermissionError(f"Cannot write to {path}")
         
-        node = VFSNode(
+        node = AVMNode(
             path=path,
             content=content,
             meta=meta or {},
@@ -43,7 +43,7 @@ class MemoryProvider(VFSProvider):
         
         return self.store.put_node(node)
     
-    def append(self, path: str, content: str) -> VFSNode:
+    def append(self, path: str, content: str) -> AVMNode:
         """appendcontentto现hasnode"""
         existing = self.store.get_node(path)
         
@@ -55,7 +55,7 @@ class MemoryProvider(VFSProvider):
         return self.write(path, new_content, existing.meta if existing else None)
     
     def create_lesson(self, title: str, content: str, 
-                      tags: list = None) -> VFSNode:
+                      tags: list = None) -> AVMNode:
         """create一条experiencelesson"""
         from datetime import datetime
         
@@ -77,7 +77,7 @@ class MemoryProvider(VFSProvider):
         return self.write(path, full_content, {"tags": tags or [], "title": title})
     
     def create_observation(self, symbol: str, observation: str,
-                           category: str = "general") -> VFSNode:
+                           category: str = "general") -> AVMNode:
         """createmarketobservationrecord"""
         from datetime import datetime
         

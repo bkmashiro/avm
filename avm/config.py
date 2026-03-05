@@ -45,7 +45,7 @@ class PermissionRule:
 
 
 @dataclass
-class VFSConfig:
+class AVMConfig:
     """
     VFS Configuration
     
@@ -60,7 +60,7 @@ class VFSConfig:
     default_access: str = "ro"
     
     @classmethod
-    def from_yaml(cls, path: str) -> "VFSConfig":
+    def from_yaml(cls, path: str) -> "AVMConfig":
         """Load configuration from YAML file"""
         with open(path) as f:
             raw = f.read()
@@ -76,7 +76,7 @@ class VFSConfig:
         return cls.from_dict(data)
     
     @classmethod
-    def from_dict(cls, data: Dict) -> "VFSConfig":
+    def from_dict(cls, data: Dict) -> "AVMConfig":
         """Create configuration from dictionary"""
         providers = [
             ProviderSpec(
@@ -152,7 +152,7 @@ class VFSConfig:
 
 
 # Default configuration (backward compatible)
-DEFAULT_CONFIG = VFSConfig(
+DEFAULT_CONFIG = AVMConfig(
     providers=[
         ProviderSpec(pattern="/live/positions*", type="alpaca_positions", ttl=60),
         ProviderSpec(pattern="/live/orders*", type="alpaca_orders", ttl=30),
@@ -172,7 +172,7 @@ DEFAULT_CONFIG = VFSConfig(
 )
 
 
-def load_config(config_path: str = None) -> VFSConfig:
+def load_config(config_path: str = None) -> AVMConfig:
     """
     Load configuration
     
@@ -195,6 +195,6 @@ def load_config(config_path: str = None) -> VFSConfig:
     
     for path in paths_to_try:
         if os.path.exists(path):
-            return VFSConfig.from_yaml(path)
+            return AVMConfig.from_yaml(path)
     
     return DEFAULT_CONFIG

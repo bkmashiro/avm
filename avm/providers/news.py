@@ -12,8 +12,8 @@ import urllib.request
 import urllib.parse
 
 from .base import LiveProvider
-from ..node import VFSNode
-from ..store import VFSStore
+from ..node import AVMNode
+from ..store import AVMStore
 
 
 class NewsProvider(LiveProvider):
@@ -37,10 +37,10 @@ class NewsProvider(LiveProvider):
         ],
     }
     
-    def __init__(self, store: VFSStore, ttl_seconds: int = 600):
+    def __init__(self, store: AVMStore, ttl_seconds: int = 600):
         super().__init__(store, "/live/news", ttl_seconds)
     
-    def fetch(self, path: str) -> Optional[VFSNode]:
+    def fetch(self, path: str) -> Optional[AVMNode]:
         parts = path.replace("/live/news/", "").replace(".md", "")
         
         try:
@@ -92,7 +92,7 @@ class NewsProvider(LiveProvider):
         except Exception:
             return []
     
-    def _fetch_market_news(self) -> VFSNode:
+    def _fetch_market_news(self) -> AVMNode:
         """getmarketnews"""
         all_items = []
         
@@ -124,7 +124,7 @@ class NewsProvider(LiveProvider):
             {"item_count": len(all_items)}
         )
     
-    def _fetch_crypto_news(self) -> VFSNode:
+    def _fetch_crypto_news(self) -> AVMNode:
         """getcryptocurrencynews"""
         all_items = []
         
@@ -154,7 +154,7 @@ class NewsProvider(LiveProvider):
             {"item_count": len(all_items)}
         )
     
-    def _fetch_stock_news(self, symbol: str) -> VFSNode:
+    def _fetch_stock_news(self, symbol: str) -> AVMNode:
         """Fetch stock-related news (Yahoo Finance RSS)"""
         url = f"https://feeds.finance.yahoo.com/rss/2.0/headline?s={symbol}&region=US&lang=en-US"
         items = self._fetch_rss(url, limit=10)

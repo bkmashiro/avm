@@ -2,7 +2,7 @@
 VFS Providers
 """
 
-from .base import VFSProvider, LiveProvider, StaticProvider
+from .base import AVMProvider, LiveProvider, StaticProvider
 from .alpaca import AlpacaPositionsProvider, AlpacaOrdersProvider
 from .indicators import TechnicalIndicatorsProvider
 from .memory import MemoryProvider
@@ -11,7 +11,7 @@ from .watchlist import WatchlistProvider
 from .http_json import HttpJsonProvider
 
 __all__ = [
-    "VFSProvider",
+    "AVMProvider",
     "LiveProvider",
     "StaticProvider",
     "AlpacaPositionsProvider",

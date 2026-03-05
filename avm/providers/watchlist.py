@@ -9,8 +9,8 @@ from typing import Optional, List, Dict
 
 from .base import LiveProvider
 from .indicators import TechnicalIndicatorsProvider
-from ..node import VFSNode
-from ..store import VFSStore
+from ..node import AVMNode
+from ..store import AVMStore
 
 
 class WatchlistProvider(LiveProvider):
@@ -32,14 +32,14 @@ class WatchlistProvider(LiveProvider):
         "crypto": ["COIN", "MARA", "RIOT", "MSTR", "SQ", "PYPL"],
     }
     
-    def __init__(self, store: VFSStore, 
+    def __init__(self, store: AVMStore, 
                  custom_symbols: List[str] = None,
                  ttl_seconds: int = 300):
         super().__init__(store, "/live/watchlist", ttl_seconds)
         self.indicators_provider = TechnicalIndicatorsProvider(store, ttl_seconds)
         self.custom_symbols = custom_symbols or []
     
-    def fetch(self, path: str) -> Optional[VFSNode]:
+    def fetch(self, path: str) -> Optional[AVMNode]:
         name = path.replace("/live/watchlist", "").replace(".md", "").strip("/")
         
         if not name:
@@ -60,7 +60,7 @@ class WatchlistProvider(LiveProvider):
         return self._fetch_watchlist(path, name, symbols)
     
     def _fetch_watchlist(self, path: str, name: str, 
-                         symbols: List[str]) -> VFSNode:
+                         symbols: List[str]) -> AVMNode:
         """getwatchlistdata"""
         lines = [
             f"# Watchlist: {name.title()}",

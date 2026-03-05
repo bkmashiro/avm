@@ -7,11 +7,14 @@ Supports custom providers, permissions, and multi-agent collaboration.
 
 __version__ = "0.9.0"
 
-from .node import VFSNode
+from .node import AVMNode
 from .graph import KVGraph
-from .store import VFSStore
-from .config import VFSConfig, ProviderSpec, PermissionRule, load_config
-from .core import VFS, register_provider_type
+from .store import AVMStore
+from .config import AVMConfig, ProviderSpec, PermissionRule, load_config
+from .core import AVM, register_provider_type
+
+# Backward compatibility alias
+VFS = AVM
 from .retrieval import Retriever, DocumentSynthesizer, RetrievalResult
 from .multi_agent import (
     AgentConfig, AgentRegistry, AgentRole, AgentQuota,
@@ -46,9 +49,9 @@ from .permissions import (
 __all__ = [
     # Core
     "VFS",
-    "VFSConfig",
-    "VFSStore",
-    "VFSNode",
+    "AVMConfig",
+    "AVMStore",
+    "AVMNode",
     "KVGraph",
     # Config
     "ProviderSpec",

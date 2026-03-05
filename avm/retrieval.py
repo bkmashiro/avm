@@ -11,8 +11,8 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import List, Dict, Any, Optional, Set, Tuple
 
-from .store import VFSStore
-from .node import VFSNode
+from .store import AVMStore
+from .node import AVMNode
 from .graph import EdgeType
 from .embedding import EmbeddingStore, EmbeddingBackend
 
@@ -21,7 +21,7 @@ from .embedding import EmbeddingStore, EmbeddingBackend
 class RetrievalResult:
     """retrieveresult"""
     query: str
-    nodes: List[VFSNode]
+    nodes: List[AVMNode]
     scores: Dict[str, float]  # path -> relevance score
     sources: Dict[str, str]   # path -> source type (semantic/graph/fts)
     graph_edges: List[Tuple[str, str, str]]  # (from, to, type)
@@ -61,7 +61,7 @@ class Retriever:
     - resultfusion
     """
     
-    def __init__(self, store: VFSStore, 
+    def __init__(self, store: AVMStore, 
                  embedding_store: EmbeddingStore = None):
         self.store = store
         self.embedding_store = embedding_store
@@ -185,7 +185,7 @@ class DocumentSynthesizer:
     将multiplenode的contentaggregate成一个structure化document
     """
     
-    def __init__(self, store: VFSStore):
+    def __init__(self, store: AVMStore):
         self.store = store
     
     def synthesize(self, result: RetrievalResult,
@@ -207,7 +207,7 @@ class DocumentSynthesizer:
         sections = []
         sources = []
         
-        # 按类别分组
+        # 按类别group
         categorized = self._categorize_nodes(result.nodes)
         
         for category, nodes in categorized.items():
@@ -231,7 +231,7 @@ class DocumentSynthesizer:
             sources=list(set(sources)),
         )
     
-    def _categorize_nodes(self, nodes: List[VFSNode]) -> Dict[str, List[VFSNode]]:
+    def _categorize_nodes(self, nodes: List[AVMNode]) -> Dict[str, List[AVMNode]]:
         """按pathprefixcategorynode"""
         categories = {}
         
@@ -264,7 +264,7 @@ class DocumentSynthesizer:
         return categories
     
     def _build_section(self, category: str, 
-                       nodes: List[VFSNode],
+                       nodes: List[AVMNode],
                        result: RetrievalResult,
                        max_chars: int = 500) -> Dict:
         """buildsection"""

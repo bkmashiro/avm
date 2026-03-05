@@ -11,7 +11,7 @@ from typing import Dict, List, Optional, Any, Tuple
 from contextlib import contextmanager
 import difflib
 
-from .node import VFSNode, NodeDiff, NodeType
+from .node import AVMNode, NodeDiff, NodeType
 from .graph import KVGraph, Edge, EdgeType
 
 
@@ -78,7 +78,7 @@ CREATE TABLE IF NOT EXISTS embeddings (
 """
 
 
-class VFSStore:
+class AVMStore:
     """
     VFS SQLite storage
     
@@ -118,7 +118,7 @@ class VFSStore:
     
     # ─── Node operations ─────────────────────────────────────────
     
-    def get_node(self, path: str) -> Optional[VFSNode]:
+    def get_node(self, path: str) -> Optional[AVMNode]:
         """Read node"""
         with self._conn() as conn:
             row = conn.execute(
@@ -128,7 +128,7 @@ class VFSStore:
             if row is None:
                 return None
             
-            return VFSNode(
+            return AVMNode(
                 path=row["path"],
                 content=row["content"],
                 meta=json.loads(row["meta"]),
@@ -138,7 +138,7 @@ class VFSStore:
                 version=row["version"],
             )
     
-    def put_node(self, node: VFSNode, save_diff: bool = True) -> VFSNode:
+    def put_node(self, node: AVMNode, save_diff: bool = True) -> AVMNode:
         """
         Write node
         
@@ -152,7 +152,7 @@ class VFSStore:
         
         return self._put_node_internal(node, save_diff)
     
-    def _put_node_internal(self, node: VFSNode, save_diff: bool = True) -> VFSNode:
+    def _put_node_internal(self, node: AVMNode, save_diff: bool = True) -> AVMNode:
         """
         Internal write (bypass permission check, for providers)
         """
@@ -268,7 +268,7 @@ class VFSStore:
         
         return True
     
-    def list_nodes(self, prefix: str = "/", limit: int = 100) -> List[VFSNode]:
+    def list_nodes(self, prefix: str = "/", limit: int = 100) -> List[AVMNode]:
         """List nodes"""
         with self._conn() as conn:
             rows = conn.execute(
@@ -277,7 +277,7 @@ class VFSStore:
             ).fetchall()
             
             return [
-                VFSNode(
+                AVMNode(
                     path=row["path"],
                     content=row["content"],
                     meta=json.loads(row["meta"]),
@@ -291,7 +291,7 @@ class VFSStore:
     
     # ─── Search ─────────────────────────────────────────────
     
-    def search(self, query: str, limit: int = 10) -> List[Tuple[VFSNode, float]]:
+    def search(self, query: str, limit: int = 10) -> List[Tuple[AVMNode, float]]:
         """
         FTS5 full-text search
         return [(node, score), ...]
@@ -315,7 +315,7 @@ class VFSStore:
             
             results = []
             for row in rows:
-                node = VFSNode(
+                node = AVMNode(
                     path=row["path"],
                     content=row["content"],
                     meta=json.loads(row["meta"]),

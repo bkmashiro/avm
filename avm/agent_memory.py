@@ -17,9 +17,9 @@ from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional, Tuple
 from enum import Enum
 
-from .store import VFSStore
-from .node import VFSNode
-from .core import VFS
+from .store import AVMStore
+from .node import AVMNode
+from .core import AVM
 from .retrieval import Retriever
 from .embedding import EmbeddingStore
 
@@ -65,7 +65,7 @@ class MemoryConfig:
 @dataclass
 class ScoredNode:
     """带score的node"""
-    node: VFSNode
+    node: AVMNode
     relevance_score: float = 0.0
     importance_score: float = 0.5
     recency_score: float = 0.5
@@ -82,15 +82,15 @@ class AgentMemory:
     supports多 agent permission控制和 append-only version
     """
     
-    def __init__(self, vfs: VFS, agent_id: str, 
+    def __init__(self, avm: AVM, agent_id: str, 
                  config: MemoryConfig = None):
         """
         Args:
-            vfs: VFS instance
+            avm: AVM instance
             agent_id: Agent 标识
             config: configuration
         """
-        self.vfs = vfs
+        self.avm = vfs
         self.agent_id = agent_id
         self.config = config or MemoryConfig()
         
@@ -147,7 +147,7 @@ class AgentMemory:
         selected = self._select_within_budget(scored, max_tokens)
         
         # 6. versionmerge（ifenable）
-        if merge_versions and hasattr(self.vfs, '_versioned_memory'):
+        if merge_versions and hasattr(self.avm, '_versioned_memory'):
             selected = self._merge_versions_in_results(selected)
         
         # 7. generate紧凑输出
@@ -155,7 +155,7 @@ class AgentMemory:
     
     def _merge_versions_in_results(self, scored: List[ScoredNode]) -> List[ScoredNode]:
         """merge同一 base_path 的多version"""
-        # 按 base_path 分组
+        # 按 base_path group
         by_base: Dict[str, List[ScoredNode]] = {}
         no_base: List[ScoredNode] = []
         
@@ -175,13 +175,13 @@ class AgentMemory:
                 merged.append(versions[0])
             else:
                 # merge多version
-                merged_content = self.vfs._versioned_memory.merge_versions(
+                merged_content = self.avm._versioned_memory.merge_versions(
                     [sn.node for sn in versions]
                 )
                 # use最高分的nodeas代table
                 best = max(versions, key=lambda x: x.final_score)
                 best.summary = self._extract_summary(
-                    VFSNode(path=base_path, content=merged_content)
+                    AVMNode(path=base_path, content=merged_content)
                 )
                 merged.append(best)
         
@@ -189,13 +189,13 @@ class AgentMemory:
     
     def _retrieve_candidates(self, query: str, 
                             prefixes: List[str],
-                            k: int = 50) -> List[Tuple[VFSNode, float]]:
+                            k: int = 50) -> List[Tuple[AVMNode, float]]:
         """retrieve候选node"""
         candidates = []
         seen = set()
         
         # use VFS 的retrievefeatures（一次retrieve）
-        result = self.vfs.retrieve(query, k=k)
+        result = self.avm.retrieve(query, k=k)
         
         for node in result.nodes:
             # checkwhether在allow的prefix下
@@ -207,7 +207,7 @@ class AgentMemory:
         
         return candidates
     
-    def _score_nodes(self, candidates: List[Tuple[VFSNode, float]],
+    def _score_nodes(self, candidates: List[Tuple[AVMNode, float]],
                      query: str,
                      strategy: ScoringStrategy) -> List[ScoredNode]:
         """nodescore"""
@@ -266,7 +266,7 @@ class AgentMemory:
         
         return selected
     
-    def _extract_summary(self, node: VFSNode) -> str:
+    def _extract_summary(self, node: AVMNode) -> str:
         """extractnodesummary"""
         content = node.content
         max_chars = self.config.max_chars_per_node
@@ -333,7 +333,7 @@ class AgentMemory:
                  tags: List[str] = None,
                  source: str = "agent",
                  namespace: str = None,
-                 path: str = None) -> VFSNode:
+                 path: str = None) -> AVMNode:
         """
         writememory（supports append-only version）
         
@@ -350,11 +350,11 @@ class AgentMemory:
         if path:
             target_path = path
         elif namespace:
-            timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S_%f")  # 加微秒
+            timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S_%f")  # add microseconds
             slug = self._make_slug(title) if title else timestamp
             target_path = f"{self.shared_prefix}/{namespace}/{slug}.md"
         else:
-            timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S_%f")  # 加微秒
+            timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S_%f")  # add microseconds
             slug = self._make_slug(title) if title else ""
             filename = f"{timestamp}_{slug}.md" if slug else f"{timestamp}.md"
             target_path = f"{self.private_prefix}/{filename}"
@@ -376,13 +376,13 @@ class AgentMemory:
             "author": self.agent_id,
         }
         
-        # useversion化write（if是update现haspath）
-        if path and hasattr(self.vfs, '_versioned_memory'):
-            node = self.vfs._versioned_memory.write_version(
+        # useversion化write（ifyesupdate现haspath）
+        if path and hasattr(self.avm, '_versioned_memory'):
+            node = self.avm._versioned_memory.write_version(
                 path, full_content, self.agent_id, meta
             )
         else:
-            node = self.vfs.write(target_path, full_content, meta)
+            node = self.avm.write(target_path, full_content, meta)
         
         # recordauditlog
         self._log_operation("write", node.path)
@@ -429,20 +429,20 @@ class AgentMemory:
     
     def _check_quota(self):
         """check配额"""
-        if hasattr(self.vfs, '_agent_registry') and self._agent_config:
+        if hasattr(self.avm, '_agent_registry') and self._agent_config:
             from .multi_agent import QuotaEnforcer
-            enforcer = QuotaEnforcer(self.vfs.store)
+            enforcer = QuotaEnforcer(self.avm.store)
             result = enforcer.check_quota(self.agent_id, self._agent_config.quota)
             if not result["ok"]:
                 raise RuntimeError(f"Quota exceeded: {result['message']}")
     
     def _log_operation(self, operation: str, path: str, details: Dict = None):
         """recordauditlog"""
-        if hasattr(self.vfs, '_audit_log'):
-            self.vfs._audit_log.log(self.agent_id, operation, path, details)
+        if hasattr(self.avm, '_audit_log'):
+            self.avm._audit_log.log(self.agent_id, operation, path, details)
     
     def share(self, path: str, namespace: str,
-              new_name: str = None) -> VFSNode:
+              new_name: str = None) -> AVMNode:
         """
         分享memorytosharedemptybetween
         
@@ -452,7 +452,7 @@ class AgentMemory:
             new_name: 新file名（optional）
         """
         # read原始node
-        node = self.vfs.read(path)
+        node = self.avm.read(path)
         if not node:
             raise ValueError(f"Node not found: {path}")
         
@@ -469,13 +469,13 @@ class AgentMemory:
         meta["shared_by"] = self.agent_id
         meta["shared_at"] = datetime.utcnow().isoformat()
         
-        return self.vfs.write(new_path, node.content, meta)
+        return self.avm.write(new_path, node.content, meta)
     
     # ─── update ─────────────────────────────────────────────
     
     def update_importance(self, path: str, importance: float):
         """updatememory的importance"""
-        node = self.vfs.read(path)
+        node = self.avm.read(path)
         if not node:
             raise ValueError(f"Node not found: {path}")
         
@@ -487,31 +487,31 @@ class AgentMemory:
         meta = node.meta.copy()
         meta["importance"] = max(0.0, min(1.0, importance))
         
-        return self.vfs.write(path, node.content, meta)
+        return self.avm.write(path, node.content, meta)
     
     def mark_accessed(self, path: str):
         """标记memorybe访问（for recency calculate）"""
-        node = self.vfs.read(path)
+        node = self.avm.read(path)
         if node:
             meta = node.meta.copy()
             meta["last_accessed"] = datetime.utcnow().isoformat()
             # 不updatecontent，只update meta
-            self.vfs.store._put_node_internal(
-                VFSNode(path=path, content=node.content, meta=meta),
+            self.avm.store._put_node_internal(
+                AVMNode(path=path, content=node.content, meta=meta),
                 save_diff=False
             )
     
     # ─── columntable ─────────────────────────────────────────────
     
-    def list_private(self, limit: int = 100) -> List[VFSNode]:
+    def list_private(self, limit: int = 100) -> List[AVMNode]:
         """list私hasmemory"""
-        return self.vfs.list(self.private_prefix, limit)
+        return self.avm.list(self.private_prefix, limit)
     
     def list_shared(self, namespace: str = None, 
-                    limit: int = 100) -> List[VFSNode]:
+                    limit: int = 100) -> List[AVMNode]:
         """listsharedmemory"""
         prefix = f"{self.shared_prefix}/{namespace}" if namespace else self.shared_prefix
-        return self.vfs.list(prefix, limit)
+        return self.avm.list(prefix, limit)
     
     def stats(self) -> Dict[str, Any]:
         """statisticsinfo"""
@@ -544,17 +544,17 @@ class AgentMemory:
         """
         from .advanced import SubscriptionManager
         
-        if not hasattr(self.vfs, '_subscription_manager'):
-            self.vfs._subscription_manager = SubscriptionManager()
+        if not hasattr(self.avm, '_subscription_manager'):
+            self.avm._subscription_manager = SubscriptionManager()
         
-        return self.vfs._subscription_manager.subscribe(
+        return self.avm._subscription_manager.subscribe(
             pattern, callback, subscriber_id=self.agent_id
         )
     
     def unsubscribe(self, pattern: str = None):
         """cancelledsubscribe"""
-        if hasattr(self.vfs, '_subscription_manager'):
-            self.vfs._subscription_manager.unsubscribe(self.agent_id, pattern)
+        if hasattr(self.avm, '_subscription_manager'):
+            self.avm._subscription_manager.unsubscribe(self.agent_id, pattern)
     
     def recall_recent(self, query: str, 
                       time_range: str = "last_7d",
@@ -569,7 +569,7 @@ class AgentMemory:
         """
         from .advanced import TimeQuery
         
-        time_query = TimeQuery(self.vfs.store)
+        time_query = TimeQuery(self.avm.store)
         recent_nodes = time_query.query(
             prefix="/memory",
             time_range=time_range,
@@ -586,7 +586,7 @@ class AgentMemory:
         for node in recent_nodes:
             sn = ScoredNode(node=node)
             sn.importance_score = node.meta.get("importance", 0.5)
-            sn.recency_score = 1.0  # already经是recent的
+            sn.recency_score = 1.0  # already经yesrecent的
             sn.relevance_score = 0.5  # timequery不考虑relevance
             sn.final_score = sn.importance_score
             sn.summary = self._extract_summary(node)
@@ -601,7 +601,7 @@ class AgentMemory:
                          derived_from: List[str],
                          title: str = None,
                          reasoning: str = None,
-                         **kwargs) -> VFSNode:
+                         **kwargs) -> AVMNode:
         """
         writederivedmemory，auto-establishsource链接
         
@@ -617,7 +617,7 @@ class AgentMemory:
         node = self.remember(content, title=title, **kwargs)
         
         # 建立derived链接
-        link_mgr = DerivedLinkManager(self.vfs.store)
+        link_mgr = DerivedLinkManager(self.avm.store)
         link_mgr.link_derived(node.path, derived_from, reasoning)
         
         return node
@@ -636,8 +636,8 @@ class AgentMemory:
         """
         from .advanced import SemanticDeduplicator, DedupeResult
         
-        embedding_store = getattr(self.vfs, '_embedding_store', None)
-        deduper = SemanticDeduplicator(self.vfs.store, embedding_store)
+        embedding_store = getattr(self.avm, '_embedding_store', None)
+        deduper = SemanticDeduplicator(self.avm.store, embedding_store)
         
         return deduper.check_duplicate(
             content, 
@@ -647,12 +647,12 @@ class AgentMemory:
     
     def remember_if_new(self, content: str, 
                         threshold: float = 0.85,
-                        **kwargs) -> Optional[VFSNode]:
+                        **kwargs) -> Optional[AVMNode]:
         """
         only在content不重复时write
         
         Returns:
-            VFSNode if written, None if duplicate
+            AVMNode if written, None if duplicate
         """
         result = self.check_duplicate(content, threshold)
         
@@ -662,7 +662,7 @@ class AgentMemory:
         return self.remember(content, **kwargs)
     
     def get_cold_memories(self, threshold: float = 0.1,
-                          limit: int = 20) -> List[VFSNode]:
+                          limit: int = 20) -> List[AVMNode]:
         """
         Get decayed cold memories
         
@@ -672,7 +672,7 @@ class AgentMemory:
         """
         from .advanced import MemoryDecay
         
-        decay = MemoryDecay(self.vfs.store)
+        decay = MemoryDecay(self.avm.store)
         return decay.get_cold_memories(
             prefix=self.private_prefix,
             threshold=threshold,
@@ -690,16 +690,16 @@ class AgentMemory:
         """
         from .advanced import MemoryCompactor
         
-        compactor = MemoryCompactor(self.vfs.store)
+        compactor = MemoryCompactor(self.avm.store)
         return compactor.compact(path, keep_recent)
     
     # ─── tag系统 ─────────────────────────────────────────
     
-    def by_tag(self, tag: str, limit: int = 100) -> List[VFSNode]:
+    def by_tag(self, tag: str, limit: int = 100) -> List[AVMNode]:
         """Get memories by tag"""
         from .advanced import TagManager
         
-        tag_mgr = TagManager(self.vfs.store)
+        tag_mgr = TagManager(self.avm.store)
         
         # search私has和sharedemptybetween
         private_nodes = tag_mgr.by_tag(tag, prefix=self.private_prefix, limit=limit)
@@ -721,7 +721,7 @@ class AgentMemory:
         """Get tag cloud (frequency distribution)"""
         from .advanced import TagManager
         
-        tag_mgr = TagManager(self.vfs.store)
+        tag_mgr = TagManager(self.avm.store)
         
         # merge私has和sharedemptybetween的tag
         private_cloud = tag_mgr.tag_cloud(prefix=self.private_prefix)
@@ -740,7 +740,7 @@ class AgentMemory:
         """contentrecommendationtag"""
         from .advanced import TagManager
         
-        tag_mgr = TagManager(self.vfs.store)
+        tag_mgr = TagManager(self.avm.store)
         return tag_mgr.suggest_tags(content, top_k)
     
     # ─── 访问statistics ─────────────────────────────────────────
@@ -749,14 +749,14 @@ class AgentMemory:
         """Get hot memories (high access)"""
         from .advanced import AccessStats
         
-        stats = AccessStats(self.vfs.store)
+        stats = AccessStats(self.avm.store)
         return stats.hot_paths(days, limit)
     
-    def cold_memories(self, days: int = 30, limit: int = 20) -> List[VFSNode]:
+    def cold_memories(self, days: int = 30, limit: int = 20) -> List[AVMNode]:
         """Get cold memories (rarely accessed)"""
         from .advanced import AccessStats
         
-        stats = AccessStats(self.vfs.store)
+        stats = AccessStats(self.avm.store)
         nodes = stats.cold_paths(days, prefix="/memory", limit=limit)
         return [n for n in nodes if self._can_read(n.path)]
     
@@ -764,7 +764,7 @@ class AgentMemory:
         """Get my activity stats"""
         from .advanced import AccessStats
         
-        stats = AccessStats(self.vfs.store)
+        stats = AccessStats(self.avm.store)
         return stats.agent_activity(self.agent_id, days)
     
     # ─── export/snapshot ─────────────────────────────────────────
@@ -778,7 +778,7 @@ class AgentMemory:
         """
         from .advanced import ExportManager
         
-        export_mgr = ExportManager(self.vfs.store)
+        export_mgr = ExportManager(self.avm.store)
         
         if format == "markdown":
             return export_mgr.export_markdown(
@@ -803,5 +803,5 @@ class AgentMemory:
         """
         from .advanced import ExportManager
         
-        export_mgr = ExportManager(self.vfs.store)
+        export_mgr = ExportManager(self.avm.store)
         return export_mgr.import_jsonl(jsonl)

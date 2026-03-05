@@ -7,8 +7,8 @@ from datetime import datetime
 from typing import Optional, Any
 
 from .base import LiveProvider
-from ..node import VFSNode
-from ..store import VFSStore
+from ..node import AVMNode
+from ..store import AVMStore
 
 
 class AlpacaPositionsProvider(LiveProvider):
@@ -21,7 +21,7 @@ class AlpacaPositionsProvider(LiveProvider):
         /live/positions/AAPL.md    - singlepositions
     """
     
-    def __init__(self, store: VFSStore, 
+    def __init__(self, store: AVMStore, 
                  api_key: str, secret_key: str,
                  base_url: str = "https://paper-api.alpaca.markets",
                  ttl_seconds: int = 60):
@@ -44,7 +44,7 @@ class AlpacaPositionsProvider(LiveProvider):
         with urllib.request.urlopen(req, timeout=10) as r:
             return json.loads(r.read())
     
-    def fetch(self, path: str) -> Optional[VFSNode]:
+    def fetch(self, path: str) -> Optional[AVMNode]:
         try:
             if path == "/live/positions.md":
                 return self._fetch_positions()
@@ -61,7 +61,7 @@ class AlpacaPositionsProvider(LiveProvider):
             )
         return None
     
-    def _fetch_positions(self) -> VFSNode:
+    def _fetch_positions(self) -> AVMNode:
         positions = self._api_request("/v2/positions")
         account = self._api_request("/v2/account")
         
@@ -106,7 +106,7 @@ class AlpacaPositionsProvider(LiveProvider):
             {"position_count": len(positions), "total_pl": total_pl}
         )
     
-    def _fetch_account(self) -> VFSNode:
+    def _fetch_account(self) -> AVMNode:
         account = self._api_request("/v2/account")
         
         lines = [
@@ -129,7 +129,7 @@ class AlpacaPositionsProvider(LiveProvider):
             {"account_id": account.get("id")}
         )
     
-    def _fetch_position(self, symbol: str) -> VFSNode:
+    def _fetch_position(self, symbol: str) -> AVMNode:
         try:
             pos = self._api_request(f"/v2/positions/{symbol}")
         except Exception:
@@ -174,7 +174,7 @@ class AlpacaOrdersProvider(LiveProvider):
         /live/orders/filled.md    - alreadyfilledorders
     """
     
-    def __init__(self, store: VFSStore,
+    def __init__(self, store: AVMStore,
                  api_key: str, secret_key: str,
                  base_url: str = "https://paper-api.alpaca.markets",
                  ttl_seconds: int = 30):
@@ -197,7 +197,7 @@ class AlpacaOrdersProvider(LiveProvider):
         with urllib.request.urlopen(req, timeout=10) as r:
             return json.loads(r.read())
     
-    def fetch(self, path: str) -> Optional[VFSNode]:
+    def fetch(self, path: str) -> Optional[AVMNode]:
         try:
             if path == "/live/orders.md":
                 return self._fetch_orders("all")
@@ -209,7 +209,7 @@ class AlpacaOrdersProvider(LiveProvider):
             return self._make_node(path, f"# Error\n\n{e}", {"error": str(e)})
         return None
     
-    def _fetch_orders(self, status: str) -> VFSNode:
+    def _fetch_orders(self, status: str) -> AVMNode:
         endpoint = f"/v2/orders?status={status}&limit=50"
         orders = self._api_request(endpoint)
         

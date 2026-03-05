@@ -21,7 +21,7 @@ from datetime import datetime
 # Use a temp database for the demo
 os.environ["XDG_DATA_HOME"] = tempfile.mkdtemp()
 
-from avm import VFS
+from avm import AVM
 from avm.graph import EdgeType
 
 
@@ -56,16 +56,16 @@ def main():
     ╚═══════════════════════════════════════════════════════════╝
     """)
     
-    # Initialize VFS
-    vfs = VFS()
-    print(f"✓ AVM initialized (DB: {vfs.store.db_path})")
+    # Initialize AVM
+    avm = AVM()
+    print(f"✓ AVM initialized (DB: {avm.store.db_path})")
     
     # ─────────────────────────────────────────────────────────
     print_section("1. BASIC READ/WRITE")
     # ─────────────────────────────────────────────────────────
     
     # Write some memories
-    vfs.write("/memory/lessons/risk_management.md", """# Risk Management Rules
+    avm.write("/memory/lessons/risk_management.md", """# Risk Management Rules
 
 ## Position Sizing
 - Never risk more than 2% of portfolio on a single trade
@@ -84,7 +84,7 @@ def main():
 """)
     print("✓ Written: /memory/lessons/risk_management.md")
     
-    vfs.write("/memory/market/NVDA_analysis.md", """# NVDA Technical Analysis
+    avm.write("/memory/market/NVDA_analysis.md", """# NVDA Technical Analysis
 
 **Date**: 2026-03-05
 **Price**: $892.50
@@ -101,7 +101,7 @@ Watch for break below 20-day MA as exit signal.
 """)
     print("✓ Written: /memory/market/NVDA_analysis.md")
     
-    vfs.write("/memory/market/BTC_update.md", """# BTC Market Update
+    avm.write("/memory/market/BTC_update.md", """# BTC Market Update
 
 **Price**: $67,250
 **Trend**: Bullish continuation
@@ -118,18 +118,18 @@ Accumulate on dips to $65K support.
     print("✓ Written: /memory/market/BTC_update.md")
     
     # Read back
-    node = vfs.read("/memory/lessons/risk_management.md")
+    node = avm.read("/memory/lessons/risk_management.md")
     print_result("Read content (first 200 chars)", node.content[:200] + "...")
     
     # ─────────────────────────────────────────────────────────
     print_section("2. FULL-TEXT SEARCH")
     # ─────────────────────────────────────────────────────────
     
-    results = vfs.search("RSI overbought", limit=5)
+    results = avm.search("RSI overbought", limit=5)
     print_result("Search: 'RSI overbought'", 
                  "\n".join([f"[{score:.2f}] {node.path}" for node, score in results]))
     
-    results = vfs.search("position sizing", limit=5)
+    results = avm.search("position sizing", limit=5)
     print_result("Search: 'position sizing'",
                  "\n".join([f"[{score:.2f}] {node.path}" for node, score in results]))
     
@@ -138,18 +138,18 @@ Accumulate on dips to $65K support.
     # ─────────────────────────────────────────────────────────
     
     # Create relationships
-    vfs.link("/memory/market/NVDA_analysis.md", 
+    avm.link("/memory/market/NVDA_analysis.md", 
              "/memory/lessons/risk_management.md", 
              EdgeType.RELATED)
     print("✓ Linked: NVDA_analysis → risk_management (related)")
     
-    vfs.link("/memory/market/BTC_update.md",
+    avm.link("/memory/market/BTC_update.md",
              "/memory/lessons/risk_management.md",
              EdgeType.RELATED)
     print("✓ Linked: BTC_update → risk_management (related)")
     
     # Query links
-    edges = vfs.links("/memory/lessons/risk_management.md")
+    edges = avm.links("/memory/lessons/risk_management.md")
     print_result("Links from risk_management.md",
                  "\n".join([f"→ {e.source} ({e.edge_type})" for e in edges]))
     
@@ -158,7 +158,7 @@ Accumulate on dips to $65K support.
     # ─────────────────────────────────────────────────────────
     
     # Create agent memory for "trader" agent
-    mem = vfs.agent_memory("trader")
+    mem = avm.agent_memory("trader")
     
     # Store some insights
     mem.remember(
@@ -197,7 +197,7 @@ Accumulate on dips to $65K support.
     # ─────────────────────────────────────────────────────────
     
     # Create another agent - each has private memory
-    analyst = vfs.agent_memory("analyst")
+    analyst = avm.agent_memory("analyst")
     
     # Analyst stores in private space
     analyst.remember(
@@ -241,18 +241,18 @@ Accumulate on dips to $65K support.
     # ─────────────────────────────────────────────────────────
     
     # List all nodes
-    nodes = vfs.list("/memory", limit=10)
+    nodes = avm.list("/memory", limit=10)
     print_result("All memories (first 10)",
                  "\n".join([n.path for n in nodes]))
     
     # View history
-    history = vfs.history("/memory/lessons/risk_management.md", limit=3)
+    history = avm.history("/memory/lessons/risk_management.md", limit=3)
     print_result("Change history",
                  "\n".join([f"[{h.timestamp[:19] if hasattr(h, 'timestamp') else ''}] {h.change_type if hasattr(h, 'change_type') else 'update'}" 
                            for h in history]))
     
     # Storage stats
-    stats = vfs.stats()
+    stats = avm.stats()
     print_result("Storage Stats",
                  f"Nodes: {stats['nodes']}, Edges: {stats['edges']}")
     
@@ -261,11 +261,11 @@ Accumulate on dips to $65K support.
     # ─────────────────────────────────────────────────────────
     
     # Delete a node
-    vfs.delete("/memory/market/BTC_update.md")
+    avm.delete("/memory/market/BTC_update.md")
     print("✓ Deleted: /memory/market/BTC_update.md")
     
     # Verify
-    node = vfs.read("/memory/market/BTC_update.md")
+    node = avm.read("/memory/market/BTC_update.md")
     print(f"✓ Verified deletion: {node is None}")
     
     # ─────────────────────────────────────────────────────────

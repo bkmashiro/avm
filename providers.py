@@ -13,12 +13,12 @@ from typing import Callable, Optional
 
 import sys
 sys.path.insert(0, str(Path(__file__).parent))
-from avm import VFSProvider, VFSNode
+from avm import AVMProvider, AVMNode
 
 
 # ── 1. StaticFileProvider ─────────────────────────────────────────────────
 
-class StaticFileProvider(VFSProvider):
+class StaticFileProvider(AVMProvider):
     """
     Map VFS paths like /static/foo.md to real files on disk.
 
@@ -35,7 +35,7 @@ class StaticFileProvider(VFSProvider):
         self.base_dir = Path(base_dir).expanduser().resolve()
         self.ttl = ttl   # 0 = never expires (files don't change often)
 
-    def fetch(self, path: str, **kwargs) -> Optional[VFSNode]:
+    def fetch(self, path: str, **kwargs) -> Optional[AVMNode]:
         # Strip the pattern prefix to get the relative file path
         prefix = self.pattern.rstrip('*').rstrip('/')
         rel = path[len(prefix):].lstrip('/')
@@ -45,7 +45,7 @@ class StaticFileProvider(VFSProvider):
             return None
 
         content = file_path.read_text(encoding='utf-8', errors='replace')
-        return VFSNode(
+        return AVMNode(
             path=path,
             content=content,
             raw_data={'file': str(file_path)},
@@ -67,7 +67,7 @@ class StaticFileProvider(VFSProvider):
 
 # ── 2. HTTPProvider ───────────────────────────────────────────────────────
 
-class HTTPProvider(VFSProvider):
+class HTTPProvider(AVMProvider):
     """
     Fetch content from an HTTP URL template.
 
@@ -97,14 +97,14 @@ class HTTPProvider(VFSProvider):
         # Optional: transform raw response bytes → Markdown string
         self.content_extractor = content_extractor or (lambda b: b.decode('utf-8', errors='replace'))
 
-    def fetch(self, path: str, **kwargs) -> Optional[VFSNode]:
+    def fetch(self, path: str, **kwargs) -> Optional[AVMNode]:
         url = self.url_template.format(path=path.lstrip('/'), **kwargs)
         try:
             req = urllib.request.Request(url, headers=self.headers)
             with urllib.request.urlopen(req, timeout=15) as resp:
                 raw = resp.read()
             content = self.content_extractor(raw)
-            return VFSNode(
+            return AVMNode(
                 path=path,
                 content=content,
                 raw_data={'url': url, 'status': resp.status},
@@ -113,7 +113,7 @@ class HTTPProvider(VFSProvider):
             )
         except Exception as exc:
             # Return error node so callers know something went wrong
-            return VFSNode(
+            return AVMNode(
                 path=path,
                 content=f'[HTTPProvider error] {exc}',
                 sources=['http'],
@@ -123,13 +123,13 @@ class HTTPProvider(VFSProvider):
 
 # ── 3. FunctionProvider ───────────────────────────────────────────────────
 
-class FunctionProvider(VFSProvider):
+class FunctionProvider(AVMProvider):
     """
     Wrap any Python function as a VFS provider. The most flexible option.
 
     The function receives `path` and must return either:
       - a string   → used as content
-      - a VFSNode  → used directly
+      - a AVMNode  → used directly
       - None       → cache miss
 
     Example:
@@ -150,11 +150,11 @@ class FunctionProvider(VFSProvider):
         self.ttl = ttl
         self._sources = sources or ['function']
 
-    def fetch(self, path: str, **kwargs) -> Optional[VFSNode]:
+    def fetch(self, path: str, **kwargs) -> Optional[AVMNode]:
         try:
             result = self.fn(path, **kwargs)
         except Exception as exc:
-            return VFSNode(
+            return AVMNode(
                 path=path,
                 content=f'[FunctionProvider error] {exc}',
                 sources=self._sources,
@@ -163,10 +163,10 @@ class FunctionProvider(VFSProvider):
 
         if result is None:
             return None
-        if isinstance(result, VFSNode):
+        if isinstance(result, AVMNode):
             return result
         # Assume string content
-        return VFSNode(
+        return AVMNode(
             path=path,
             content=str(result),
             sources=self._sources,

@@ -7,9 +7,9 @@ Config-driven virtual filesystem
 from typing import Dict, List, Optional, Type, Callable, Any, Tuple
 from pathlib import Path
 
-from .config import VFSConfig, ProviderSpec, load_config
-from .store import VFSStore
-from .node import VFSNode, NodeType
+from .config import AVMConfig, ProviderSpec, load_config
+from .store import AVMStore
+from .node import AVMNode, NodeType
 from .graph import EdgeType
 
 
@@ -39,7 +39,7 @@ class ProviderRegistry:
         if factory:
             self._factories[name] = factory
     
-    def create(self, name: str, store: VFSStore, 
+    def create(self, name: str, store: AVMStore, 
                spec: ProviderSpec) -> Optional[Any]:
         """create provider instance"""
         if name in self._factories:
@@ -66,7 +66,7 @@ def register_provider_type(name: str, provider_class: Type = None,
     _registry.register(name, provider_class, factory)
 
 
-class VFS:
+class AVM:
     """
     虚拟file系统
     
@@ -77,10 +77,10 @@ class VFS:
     - relationgraph
     """
     
-    def __init__(self, config: VFSConfig = None, config_path: str = None):
+    def __init__(self, config: AVMConfig = None, config_path: str = None):
         """
         Args:
-            config: VFSConfig instance
+            config: AVMConfig instance
             config_path: Configuration file path
         """
         if config:
@@ -90,7 +90,7 @@ class VFS:
         
         # initializestorage
         db_path = self.config.db_path or None
-        self.store = VFSStore(db_path)
+        self.store = AVMStore(db_path)
         
         # Provider instancecache
         self._providers: Dict[str, Any] = {}
@@ -194,7 +194,7 @@ class VFS:
     
     # ─── 读写interface ─────────────────────────────────────────
     
-    def read(self, path: str, force_refresh: bool = False) -> Optional[VFSNode]:
+    def read(self, path: str, force_refresh: bool = False) -> Optional[AVMNode]:
         """
         readnode
         
@@ -213,7 +213,7 @@ class VFS:
         return self.store.get_node(path)
     
     def write(self, path: str, content: str, 
-              meta: Dict = None) -> VFSNode:
+              meta: Dict = None) -> AVMNode:
         """
         writenode
         
@@ -223,7 +223,7 @@ class VFS:
         if not self.config.check_permission(path, "write"):
             raise PermissionError(f"No write permission for {path}")
         
-        node = VFSNode(
+        node = AVMNode(
             path=path,
             content=content,
             meta=meta or {},
@@ -239,13 +239,13 @@ class VFS:
         
         return self.store.delete_node(path)
     
-    def list(self, prefix: str = "/", limit: int = 100) -> List[VFSNode]:
+    def list(self, prefix: str = "/", limit: int = 100) -> List[AVMNode]:
         """listnode"""
         return self.store.list_nodes(prefix, limit)
     
     # ─── search ─────────────────────────────────────────────
     
-    def search(self, query: str, limit: int = 10) -> List[Tuple[VFSNode, float]]:
+    def search(self, query: str, limit: int = 10) -> List[Tuple[AVMNode, float]]:
         """full-textsearch"""
         return self.store.search(query, limit)
     
@@ -432,7 +432,7 @@ class VFS:
                    time_range: str = None,
                    after: str = None,
                    before: str = None,
-                   limit: int = 100) -> List[VFSNode]:
+                   limit: int = 100) -> List[AVMNode]:
         """timerangequery"""
         from .advanced import TimeQuery
         from datetime import datetime
@@ -525,7 +525,7 @@ class VFS:
     
     def create_user(self, name: str, groups: List[str] = None,
                     capabilities: List[str] = None) -> "User":
-        """create用户"""
+        """createuser"""
         if not hasattr(self, '_user_registry'):
             self.init_permissions()
         
@@ -543,10 +543,10 @@ class VFS:
     def check_permission(self, user: "User", path: str, 
                          action: str = "read") -> bool:
         """
-        check用户permission
+        checkuserpermission
         
         Args:
-            user: 用户object
+            user: userobject
             path: path
             action: read/write/delete/search
         """
@@ -588,7 +588,7 @@ class VFS:
         create API Key（for skill authentication）
         
         Args:
-            user: 用户
+            user: user
             paths: allow的path（supportswildcard）
             actions: allow的操作
             expires_days: expired天数

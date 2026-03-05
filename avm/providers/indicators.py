@@ -10,8 +10,8 @@ from typing import Optional, Dict, Any, List
 import urllib.request
 
 from .base import LiveProvider
-from ..node import VFSNode
-from ..store import VFSStore
+from ..node import AVMNode
+from ..store import AVMStore
 
 
 class TechnicalIndicatorsProvider(LiveProvider):
@@ -26,10 +26,10 @@ class TechnicalIndicatorsProvider(LiveProvider):
         /live/indicators/AAPL/bb.md    - Bollinger Bands
     """
     
-    def __init__(self, store: VFSStore, ttl_seconds: int = 300):
+    def __init__(self, store: AVMStore, ttl_seconds: int = 300):
         super().__init__(store, "/live/indicators", ttl_seconds)
     
-    def fetch(self, path: str) -> Optional[VFSNode]:
+    def fetch(self, path: str) -> Optional[AVMNode]:
         parts = path.replace("/live/indicators/", "").split("/")
         if not parts or not parts[0]:
             return None
@@ -220,7 +220,7 @@ class TechnicalIndicatorsProvider(LiveProvider):
         
         return atr
     
-    def _make_full_report(self, symbol: str, data: Dict) -> VFSNode:
+    def _make_full_report(self, symbol: str, data: Dict) -> AVMNode:
         closes = data["closes"]
         highs = data["highs"]
         lows = data["lows"]
@@ -341,7 +341,7 @@ class TechnicalIndicatorsProvider(LiveProvider):
         )
     
     def _make_indicator_node(self, symbol: str, indicator: str, 
-                             data: Dict) -> VFSNode:
+                             data: Dict) -> AVMNode:
         closes = data["closes"]
         highs = data["highs"]
         lows = data["lows"]

@@ -19,8 +19,8 @@ from enum import Enum
 import fnmatch
 import json
 
-from .store import VFSStore
-from .node import VFSNode
+from .store import AVMStore
+from .node import AVMNode
 
 
 class AgentRole(Enum):
@@ -156,7 +156,7 @@ class AuditLog:
     Audit log for tracking operations
     """
     
-    def __init__(self, store: VFSStore):
+    def __init__(self, store: AVMStore):
         self.store = store
         self._init_table()
     
@@ -242,11 +242,11 @@ class VersionedMemory:
     Recall merges all versions.
     """
     
-    def __init__(self, store: VFSStore):
+    def __init__(self, store: AVMStore):
         self.store = store
     
     def write_version(self, base_path: str, content: str, 
-                      agent_id: str, meta: Dict = None) -> VFSNode:
+                      agent_id: str, meta: Dict = None) -> AVMNode:
         """
         Write a new version of content
         
@@ -274,7 +274,7 @@ class VersionedMemory:
         full_meta["base_path"] = base_path
         
         # Write
-        node = VFSNode(
+        node = AVMNode(
             path=versioned_path,
             content=content,
             meta=full_meta,
@@ -293,7 +293,7 @@ class VersionedMemory:
         
         return node
     
-    def get_versions(self, base_path: str) -> List[VFSNode]:
+    def get_versions(self, base_path: str) -> List[AVMNode]:
         """Get all versions of a path"""
         versions = []
         
@@ -315,7 +315,7 @@ class VersionedMemory:
         
         return versions
     
-    def merge_versions(self, versions: List[VFSNode], 
+    def merge_versions(self, versions: List[AVMNode], 
                        max_per_author: int = 3) -> str:
         """
         Merge multiple versions into a single markdown document
@@ -326,7 +326,7 @@ class VersionedMemory:
             return ""
         
         # Group by author
-        by_author: Dict[str, List[VFSNode]] = {}
+        by_author: Dict[str, List[AVMNode]] = {}
         for v in versions:
             author = v.meta.get("author", "unknown")
             if author not in by_author:
@@ -372,7 +372,7 @@ class QuotaEnforcer:
     Enforce agent quotas
     """
     
-    def __init__(self, store: VFSStore):
+    def __init__(self, store: AVMStore):
         self.store = store
     
     def check_quota(self, agent_id: str, quota: AgentQuota) -> Dict[str, Any]:

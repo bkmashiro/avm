@@ -11,8 +11,8 @@ from pathlib import Path
 from typing import List, Dict, Optional, Any
 import glob
 
-from .store import VFSStore
-from .node import VFSNode, NodeType
+from .store import AVMStore
+from .node import AVMNode, NodeType
 from .graph import EdgeType
 
 
@@ -26,11 +26,11 @@ class VFSImporter:
     - directoryrecursiveimport
     """
     
-    def __init__(self, store: VFSStore):
+    def __init__(self, store: AVMStore):
         self.store = store
     
     def import_file(self, local_path: str, vfs_path: str = None,
-                    meta: Dict = None) -> VFSNode:
+                    meta: Dict = None) -> AVMNode:
         """
         importsinglefile
         
@@ -48,7 +48,7 @@ class VFSImporter:
         if vfs_path is None:
             vfs_path = f"/research/{path.name}"
         
-        # 确保path在allow的prefix下（import用 /research）
+        # ensurepath在allow的prefix下（import用 /research）
         if not vfs_path.startswith("/research"):
             vfs_path = f"/research{vfs_path}" if vfs_path.startswith("/") else f"/research/{vfs_path}"
         
@@ -56,7 +56,7 @@ class VFSImporter:
         node_meta["imported_from"] = str(path.absolute())
         node_meta["imported_at"] = datetime.utcnow().isoformat()
         
-        node = VFSNode(
+        node = AVMNode(
             path=vfs_path,
             content=content,
             meta=node_meta,
@@ -67,7 +67,7 @@ class VFSImporter:
     
     def import_directory(self, local_dir: str, vfs_prefix: str = "/research",
                          pattern: str = "**/*.md",
-                         flatten: bool = False) -> List[VFSNode]:
+                         flatten: bool = False) -> List[AVMNode]:
         """
         batchimportdirectory
         
@@ -100,7 +100,7 @@ class VFSImporter:
         
         return nodes
     
-    def import_json(self, json_path: str) -> List[VFSNode]:
+    def import_json(self, json_path: str) -> List[AVMNode]:
         """
         from JSON batchimport
         
@@ -115,7 +115,7 @@ class VFSImporter:
         
         nodes = []
         for item in data:
-            node = VFSNode(
+            node = AVMNode(
                 path=item["path"],
                 content=item.get("content", ""),
                 meta=item.get("meta", {}),
@@ -132,7 +132,7 @@ class VFSExporter:
     exporttool
     """
     
-    def __init__(self, store: VFSStore):
+    def __init__(self, store: AVMStore):
         self.store = store
     
     def export_to_json(self, prefix: str = "/", 
@@ -178,7 +178,7 @@ class VFSSync:
     maintainlocaldirectory和 VFS 的sync
     """
     
-    def __init__(self, store: VFSStore):
+    def __init__(self, store: AVMStore):
         self.store = store
     
     def sync_from_local(self, local_dir: str, vfs_prefix: str,
@@ -231,7 +231,7 @@ class RelationBuilder:
     auto-discover和建立node between的relation
     """
     
-    def __init__(self, store: VFSStore):
+    def __init__(self, store: AVMStore):
         self.store = store
     
     def auto_link_by_symbol(self, prefix: str = "/") -> int:

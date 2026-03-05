@@ -10,8 +10,8 @@ from datetime import datetime
 from typing import Optional, Dict, Any
 
 from .base import LiveProvider
-from ..node import VFSNode
-from ..store import VFSStore
+from ..node import AVMNode
+from ..store import AVMStore
 
 
 class HttpJsonProvider(LiveProvider):
@@ -25,7 +25,7 @@ class HttpJsonProvider(LiveProvider):
         path_mapping: pathto API endpoint 的mapping (optional)
     """
     
-    def __init__(self, store: VFSStore, prefix: str, ttl_seconds: int = 60,
+    def __init__(self, store: AVMStore, prefix: str, ttl_seconds: int = 60,
                  base_url: str = "", token: str = "", 
                  headers: Dict[str, str] = None,
                  path_mapping: Dict[str, str] = None):
@@ -48,7 +48,7 @@ class HttpJsonProvider(LiveProvider):
         return f"/{rel_path}".replace(".md", "")
     
     def _request(self, endpoint: str) -> Any:
-        """发送 HTTP request"""
+        """send HTTP request"""
         url = f"{self.base_url}{endpoint}"
         
         headers = {"User-Agent": "VFS/1.0"}
@@ -96,7 +96,7 @@ class HttpJsonProvider(LiveProvider):
         
         return "\n".join(lines)
     
-    def fetch(self, path: str) -> Optional[VFSNode]:
+    def fetch(self, path: str) -> Optional[AVMNode]:
         """getdata"""
         try:
             endpoint = self._get_endpoint(path)

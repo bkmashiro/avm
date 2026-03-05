@@ -18,8 +18,8 @@ from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional, Callable, Set, Tuple
 from enum import Enum
 
-from .store import VFSStore
-from .node import VFSNode
+from .store import AVMStore
+from .node import AVMNode
 from .graph import EdgeType
 
 
@@ -37,7 +37,7 @@ class SyncManager:
     - Conflict resolution: append (default) or last-write-wins
     """
     
-    def __init__(self, store: VFSStore):
+    def __init__(self, store: AVMStore):
         self.store = store
     
     def sync_to_directory(self, directory: str, 
@@ -91,7 +91,7 @@ class SyncManager:
                 path = data.get("path")
                 
                 if path and path not in local_paths:
-                    node = VFSNode(
+                    node = AVMNode(
                         path=path,
                         content=data.get("content", ""),
                         meta=data.get("meta", {}),
@@ -167,7 +167,7 @@ class SyncManager:
                     path = data.get("path")
                     
                     if path and path not in local_paths:
-                        node = VFSNode(
+                        node = AVMNode(
                             path=path,
                             content=data.get("content", ""),
                             meta=data.get("meta", {}),
@@ -290,7 +290,7 @@ class MemoryDecay:
     Does NOT delete - just affects recall ranking.
     """
     
-    def __init__(self, store: VFSStore, half_life_days: float = 7.0):
+    def __init__(self, store: AVMStore, half_life_days: float = 7.0):
         """
         Args:
             store: VFS store
@@ -300,7 +300,7 @@ class MemoryDecay:
         self.half_life_days = half_life_days
         self._decay_constant = math.log(2) / (half_life_days * 24 * 3600)
     
-    def calculate_decay(self, node: VFSNode, 
+    def calculate_decay(self, node: AVMNode, 
                         reference_time: datetime = None) -> float:
         """
         Calculate decay factor for a node
@@ -328,7 +328,7 @@ class MemoryDecay:
         
         return decay_factor
     
-    def apply_decay(self, nodes: List[VFSNode]) -> List[Tuple[VFSNode, float]]:
+    def apply_decay(self, nodes: List[AVMNode]) -> List[Tuple[AVMNode, float]]:
         """
         Apply decay to list of nodes
         
@@ -349,7 +349,7 @@ class MemoryDecay:
     
     def get_cold_memories(self, prefix: str = "/memory",
                           threshold: float = 0.1,
-                          limit: int = 100) -> List[VFSNode]:
+                          limit: int = 100) -> List[AVMNode]:
         """Get memories that have decayed below threshold"""
         nodes = self.store.list_nodes(prefix, limit=1000)
         
@@ -384,7 +384,7 @@ class MemoryCompactor:
     Keeps recent N versions, summarizes older ones.
     """
     
-    def __init__(self, store: VFSStore, summarizer: Callable = None):
+    def __init__(self, store: AVMStore, summarizer: Callable = None):
         """
         Args:
             store: VFS store
@@ -444,7 +444,7 @@ class MemoryCompactor:
         base_name = base_path.rsplit(".", 1)[0]
         summary_path = f"{base_name}.summary_{timestamp}.md"
         
-        summary_node = VFSNode(
+        summary_node = AVMNode(
             path=summary_path,
             content=summary,
             meta={
@@ -470,7 +470,7 @@ class MemoryCompactor:
             removed_paths=removed,
         )
     
-    def _get_versions(self, base_path: str) -> List[VFSNode]:
+    def _get_versions(self, base_path: str) -> List[AVMNode]:
         """Get all versions of a path"""
         # Get base
         base = self.store.get_node(base_path)
@@ -509,7 +509,7 @@ class SemanticDeduplicator:
     - Text fingerprinting (fallback)
     """
     
-    def __init__(self, store: VFSStore, embedding_store = None):
+    def __init__(self, store: AVMStore, embedding_store = None):
         self.store = store
         self.embedding_store = embedding_store
     
@@ -606,7 +606,7 @@ class DerivedLinkManager:
     When an agent writes a conclusion, link it to source memories.
     """
     
-    def __init__(self, store: VFSStore):
+    def __init__(self, store: AVMStore):
         self.store = store
     
     def link_derived(self, derived_path: str, 
@@ -661,7 +661,7 @@ class DerivedLinkManager:
         for edge in derived_edges:
             self._trace_chain(edge.target, current_chain, all_chains, max_depth)
     
-    def get_derived_from(self, source_path: str) -> List[VFSNode]:
+    def get_derived_from(self, source_path: str) -> List[AVMNode]:
         """Get all memories derived from a source"""
         edges = self.store.get_links(source_path, direction="in")
         derived_edges = [e for e in edges if e.edge_type == EdgeType.DERIVED]
@@ -692,11 +692,11 @@ class TagManager:
     - Auto-tagging suggestions
     """
     
-    def __init__(self, store: VFSStore):
+    def __init__(self, store: AVMStore):
         self.store = store
     
     def by_tag(self, tag: str, prefix: str = "/memory",
-               limit: int = 100) -> List[VFSNode]:
+               limit: int = 100) -> List[AVMNode]:
         """Get all memories with a specific tag"""
         nodes = self.store.list_nodes(prefix, limit=limit * 2)
         
@@ -780,7 +780,7 @@ class AccessStats:
     Track and analyze memory access patterns
     """
     
-    def __init__(self, store: VFSStore):
+    def __init__(self, store: AVMStore):
         self.store = store
         self._init_table()
     
@@ -831,7 +831,7 @@ class AccessStats:
         return [(row[0], row[1]) for row in rows]
     
     def cold_paths(self, days: int = 30, prefix: str = "/memory",
-                   limit: int = 20) -> List[VFSNode]:
+                   limit: int = 20) -> List[AVMNode]:
         """Get paths not accessed in recent days"""
         cutoff = (datetime.utcnow() - timedelta(days=days)).isoformat()
         
@@ -892,7 +892,7 @@ class ExportManager:
     Export and snapshot functionality
     """
     
-    def __init__(self, store: VFSStore):
+    def __init__(self, store: AVMStore):
         self.store = store
     
     def export_jsonl(self, prefix: str = "/memory",
@@ -976,7 +976,7 @@ class ExportManager:
             
             try:
                 obj = json.loads(line)
-                node = VFSNode(
+                node = AVMNode(
                     path=obj["path"],
                     content=obj["content"],
                     meta=obj.get("meta", {}),
@@ -1012,7 +1012,7 @@ class ExportManager:
             "paths": [n.path for n in nodes],
         }
         
-        snapshot_node = VFSNode(
+        snapshot_node = AVMNode(
             path=f"{snapshot_path}/meta.json",
             content=json.dumps(snapshot_meta, indent=2),
             meta={"type": "snapshot_meta"},
@@ -1021,7 +1021,7 @@ class ExportManager:
         self.store._put_node_internal(snapshot_node)
         
         # Store content
-        content_node = VFSNode(
+        content_node = AVMNode(
             path=f"{snapshot_path}/content.jsonl",
             content=self.export_jsonl("/"),
             meta={"type": "snapshot_content"},
@@ -1069,14 +1069,14 @@ class TimeQuery:
     Time-based memory queries
     """
     
-    def __init__(self, store: VFSStore):
+    def __init__(self, store: AVMStore):
         self.store = store
     
     def query(self, prefix: str = "/memory",
               after: datetime = None,
               before: datetime = None,
               time_range: str = None,
-              limit: int = 100) -> List[VFSNode]:
+              limit: int = 100) -> List[AVMNode]:
         """
         Query memories by time
         
@@ -1145,9 +1145,9 @@ class TimeQuery:
         # Default: last 7 days
         return now - timedelta(days=7), now
     
-    def group_by_date(self, nodes: List[VFSNode]) -> Dict[str, List[VFSNode]]:
+    def group_by_date(self, nodes: List[AVMNode]) -> Dict[str, List[AVMNode]]:
         """Group nodes by date"""
-        grouped: Dict[str, List[VFSNode]] = {}
+        grouped: Dict[str, List[AVMNode]] = {}
         
         for node in nodes:
             created = node.meta.get("created_at") or node.updated_at.isoformat()

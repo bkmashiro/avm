@@ -6,25 +6,25 @@ from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import Dict, List, Optional, Any
 
-from ..node import VFSNode, NodeType
-from ..store import VFSStore
+from ..node import AVMNode, NodeType
+from ..store import AVMStore
 
 
-class VFSProvider(ABC):
+class AVMProvider(ABC):
     """
     Data provider base class
     """
     
-    def __init__(self, store: VFSStore, prefix: str):
+    def __init__(self, store: AVMStore, prefix: str):
         self.store = store
         self.prefix = prefix
     
     @abstractmethod
-    def fetch(self, path: str) -> Optional[VFSNode]:
+    def fetch(self, path: str) -> Optional[AVMNode]:
         """Fetch data from source"""
         pass
     
-    def get(self, path: str, force_refresh: bool = False) -> Optional[VFSNode]:
+    def get(self, path: str, force_refresh: bool = False) -> Optional[AVMNode]:
         """Get node (with cache)"""
         if not path.startswith(self.prefix):
             return None
@@ -51,20 +51,20 @@ class VFSProvider(ABC):
         return count
 
 
-class LiveProvider(VFSProvider):
+class LiveProvider(AVMProvider):
     """Live data provider (with TTL)"""
     
-    def __init__(self, store: VFSStore, prefix: str, ttl_seconds: int = 300):
+    def __init__(self, store: AVMStore, prefix: str, ttl_seconds: int = 300):
         super().__init__(store, prefix)
         self.ttl_seconds = ttl_seconds
     
     def _make_node(self, path: str, content: str, 
-                   meta: Dict = None) -> VFSNode:
+                   meta: Dict = None) -> AVMNode:
         node_meta = meta or {}
         node_meta["ttl_seconds"] = self.ttl_seconds
         node_meta["provider"] = self.__class__.__name__
         
-        return VFSNode(
+        return AVMNode(
             path=path,
             content=content,
             meta=node_meta,
@@ -72,15 +72,15 @@ class LiveProvider(VFSProvider):
         )
 
 
-class StaticProvider(VFSProvider):
+class StaticProvider(AVMProvider):
     """Static data provider"""
     
     def _make_node(self, path: str, content: str,
-                   meta: Dict = None) -> VFSNode:
+                   meta: Dict = None) -> AVMNode:
         node_meta = meta or {}
         node_meta["provider"] = self.__class__.__name__
         
-        return VFSNode(
+        return AVMNode(
             path=path,
             content=content,
             meta=node_meta,

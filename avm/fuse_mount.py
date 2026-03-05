@@ -483,9 +483,9 @@ Examples:
     
     # Initialize VFS
     from . import VFS
-    from .config import VFSConfig
+    from .config import AVMConfig
     
-    config = VFSConfig(db_path=args.db) if args.db else None
+    config = AVMConfig(db_path=args.db) if args.db else None
     vfs = VFS(config=config)
     
     print(f"Mounting AVM at {args.mountpoint}")

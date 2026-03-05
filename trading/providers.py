@@ -11,7 +11,7 @@ import sys, os, json, urllib.request, datetime
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from avm import VFSProvider, VFSNode
+from avm import AVMProvider, AVMNode
 
 
 def _load_trading_env() -> dict:
@@ -41,7 +41,7 @@ def _alpaca_get(url: str, key: str, secret: str) -> dict:
 
 # ── 1. AlpacaPositionsProvider ─────────────────────────────────────────────
 
-class AlpacaPositionsProvider(VFSProvider):
+class AlpacaPositionsProvider(AVMProvider):
     """
     Fetches live portfolio positions from Alpaca and formats as Markdown.
     Path: /trading/positions.md
@@ -50,7 +50,7 @@ class AlpacaPositionsProvider(VFSProvider):
     pattern = '/trading/positions.md'
     ttl = 300
 
-    def fetch(self, path: str, **kwargs) -> VFSNode | None:
+    def fetch(self, path: str, **kwargs) -> AVMNode | None:
         try:
             env = _load_trading_env()
             key    = env['ALPACA_API_KEY']
@@ -63,26 +63,26 @@ class AlpacaPositionsProvider(VFSProvider):
             pos_lines = '\n'.join(
                 f"- **{p['symbol']}** {p['qty']}股 "
                 f"@ ${float(p['avg_entry_price']):.2f} | "
-                f"市值 ${float(p['market_value']):,.2f} | "
+                f"市value ${float(p['market_value']):,.2f} | "
                 f"盈亏 ${float(p['unrealized_pl']):,.2f} "
                 f"({float(p['unrealized_plpc'])*100:.1f}%)"
                 for p in positions
-            ) or '_空仓_'
+            ) or '_null仓_'
 
             now_utc = datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')
-            content = f"""# 当前持仓
+            content = f"""# current持仓
 
 **总资产**: ${float(acc['equity']):,.2f}
 **现金**: ${float(acc['cash']):,.2f}
 **当日盈亏**: ${float(acc.get('equity', 0)) - float(acc.get('last_equity', acc.get('equity', 0))):,.2f}
 **买入力**: ${float(acc.get('buying_power', 0)):,.2f}
-**更新时间**: {now_utc}
+**updated_at**: {now_utc}
 
 ## 持仓明细
 
 {pos_lines}
 """
-            return VFSNode(
+            return AVMNode(
                 path=path,
                 content=content,
                 raw_data={'account': acc, 'positions': positions},
@@ -90,16 +90,16 @@ class AlpacaPositionsProvider(VFSProvider):
                 confidence=1.0,
             )
         except FileNotFoundError as e:
-            return VFSNode(
+            return AVMNode(
                 path=path,
-                content=f'# 持仓\n\n⚠️ {e}\n\n请创建 `~/.openclaw/workspace/trading/.env`',
+                content=f'# 持仓\n\n⚠️ {e}\n\n请create `~/.openclaw/workspace/trading/.env`',
                 sources=['alpaca_api'],
                 confidence=0.0,
             )
         except Exception as e:
-            return VFSNode(
+            return AVMNode(
                 path=path,
-                content=f'# 持仓\n\n❌ Alpaca API 错误: {e}',
+                content=f'# 持仓\n\n❌ Alpaca API error: {e}',
                 sources=['alpaca_api'],
                 confidence=0.0,
             )
@@ -107,7 +107,7 @@ class AlpacaPositionsProvider(VFSProvider):
 
 # ── 2. AlpacaAccountProvider ───────────────────────────────────────────────
 
-class AlpacaAccountProvider(VFSProvider):
+class AlpacaAccountProvider(AVMProvider):
     """
     Fetches account summary from Alpaca.
     Path: /trading/account.md
@@ -116,7 +116,7 @@ class AlpacaAccountProvider(VFSProvider):
     pattern = '/trading/account.md'
     ttl = 60
 
-    def fetch(self, path: str, **kwargs) -> VFSNode | None:
+    def fetch(self, path: str, **kwargs) -> AVMNode | None:
         try:
             env = _load_trading_env()
             key    = env['ALPACA_API_KEY']
@@ -128,17 +128,17 @@ class AlpacaAccountProvider(VFSProvider):
 
             content = f"""# 账户摘要
 
-| 字段 | 值 |
+| field | value |
 |------|-----|
 | 总资产 | ${float(acc['equity']):,.2f} |
-| 组合价值 | ${float(acc.get('portfolio_value', acc['equity'])):,.2f} |
+| combine价value | ${float(acc.get('portfolio_value', acc['equity'])):,.2f} |
 | 现金 | ${float(acc['cash']):,.2f} |
 | 买入力（日内） | ${float(acc.get('daytrading_buying_power', 0)):,.2f} |
 | 买入力（隔夜） | ${float(acc.get('regt_buying_power', 0)):,.2f} |
 | 状态 | {acc.get('status', 'unknown')} |
-| 更新时间 | {now_utc} |
+| updated_at | {now_utc} |
 """
-            return VFSNode(
+            return AVMNode(
                 path=path,
                 content=content,
                 raw_data=acc,
@@ -146,7 +146,7 @@ class AlpacaAccountProvider(VFSProvider):
                 confidence=1.0,
             )
         except Exception as e:
-            return VFSNode(
+            return AVMNode(
                 path=path,
                 content=f'# 账户\n\n❌ {e}',
                 sources=['alpaca_api'],
@@ -156,7 +156,7 @@ class AlpacaAccountProvider(VFSProvider):
 
 # ── 3. ResearchProvider ────────────────────────────────────────────────────
 
-class ResearchProvider(VFSProvider):
+class ResearchProvider(AVMProvider):
     """
     Serves research reports from a local directory.
     VFS path /research/AAPL.md → <reports_dir>/AAPL.md
@@ -168,14 +168,14 @@ class ResearchProvider(VFSProvider):
     def __init__(self, reports_dir: str = '~/.openclaw/workspace/trading/research_reports'):
         self.reports_dir = Path(reports_dir).expanduser()
 
-    def fetch(self, path: str, **kwargs) -> VFSNode | None:
+    def fetch(self, path: str, **kwargs) -> AVMNode | None:
         filename = path.split('/')[-1]
         file_path = self.reports_dir / filename
 
         if not file_path.exists():
             # Return a stub so callers know the path exists but has no data
             ticker = filename.replace('.md', '').upper()
-            return VFSNode(
+            return AVMNode(
                 path=path,
                 content=f'# {ticker} Research\n\n_No report found. Place a file at `{file_path}`._',
                 sources=['research_local'],
@@ -183,7 +183,7 @@ class ResearchProvider(VFSProvider):
             )
 
         content = file_path.read_text(encoding='utf-8', errors='replace')
-        return VFSNode(
+        return AVMNode(
             path=path,
             content=content,
             raw_data={'file': str(file_path)},

@@ -1,5 +1,5 @@
 """
-tests/test_advanced.py - 高级功能测试
+tests/test_advanced.py - Advanced features tests
 """
 
 import pytest
@@ -7,16 +7,16 @@ import tempfile
 import os
 from datetime import datetime, timedelta
 
-from avm import VFS, VFSNode
+from avm import AVM, AVMNode
 
 
 @pytest.fixture
 def vfs():
-    """创建临时 VFS 实例"""
+    """Create temp AVM instance"""
     with tempfile.TemporaryDirectory() as tmpdir:
         db_path = os.path.join(tmpdir, "test.db")
-        from avm.config import VFSConfig, PermissionRule
-        config = VFSConfig(
+        from avm.config import AVMConfig, PermissionRule
+        config = AVMConfig(
             db_path=db_path,
             permissions=[
                 PermissionRule(pattern="/memory/*", access="rw"),
@@ -24,7 +24,7 @@ def vfs():
             ],
             default_access="rw"
         )
-        v = VFS(config=config)
+        v = AVM(config=config)
         v.load_agents(config_dict={
             "agents": {
                 "akashi": {
@@ -47,7 +47,7 @@ def vfs():
 
 
 class TestSubscription:
-    """订阅系统测试"""
+    """Subscription system tests"""
     
     def test_subscribe_and_notify(self, vfs):
         akashi = vfs.agent_memory("akashi")
@@ -56,11 +56,11 @@ class TestSubscription:
         def on_event(event):
             events.append(event)
         
-        # 订阅
+        # Subscribe
         sub_id = akashi.subscribe("/memory/shared/market/*", on_event)
         assert sub_id == "akashi"
         
-        # 手动触发通知
+        # Manually trigger notification
         vfs._notify_subscribers("/memory/shared/market/BTC.md", "write", "akashi")
         
         assert len(events) == 1
@@ -78,7 +78,7 @@ class TestSubscription:
 
 
 class TestMemoryDecay:
-    """记忆衰减测试"""
+    """Memory decay tests"""
     
     def test_decay_calculation(self, vfs):
         from avm.advanced import MemoryDecay
@@ -88,98 +88,98 @@ class TestMemoryDecay:
         
         decay = MemoryDecay(vfs.store, half_life_days=7)
         
-        # 刚写入的应该接近 1.0
+        # Just written should be close to 1.0
         nodes = akashi.list_private()
         assert len(nodes) > 0
         
         factor = decay.calculate_decay(nodes[0])
-        assert factor > 0.99  # 刚写入，几乎无衰减
+        assert factor > 0.99  # Just written, almost no decay
     
     def test_get_cold_memories(self, vfs):
         akashi = vfs.agent_memory("akashi")
         
-        # 写入一些记忆
+        # Write some memories
         akashi.remember("Content 1", importance=0.1)
         akashi.remember("Content 2", importance=0.9)
         
-        # 低重要性的应该更容易成为冷记忆
+        # Low importance should be more likely to become cold
         cold = akashi.get_cold_memories(threshold=0.5)
-        # 新写入的不会立即成为冷记忆
+        # New writes wont immediately become cold
         assert isinstance(cold, list)
 
 
 class TestCompaction:
-    """压缩测试"""
+    """Compaction tests"""
     
     def test_compact_versions(self, vfs):
         akashi = vfs.agent_memory("akashi")
         
-        # 创建多个版本
+        # Create multiple versions
         path = "/memory/shared/market/TEST.md"
         akashi.remember("Version 1", path=path)
         akashi.remember("Version 2", path=path)
         akashi.remember("Version 3", path=path)
         akashi.remember("Version 4", path=path)
         
-        # 压缩，保留2个
+        # Compact, keep 2
         result = akashi.compact_versions(path, keep_recent=2)
         
-        # 应该有压缩发生（如果版本足够多）
+        # Should have compaction (if enough versions)
         assert result.versions_before >= 1
         assert isinstance(result.removed_paths, list)
 
 
 class TestDeduplication:
-    """去重测试"""
+    """Deduplication tests"""
     
     def test_check_duplicate(self, vfs):
         akashi = vfs.agent_memory("akashi")
         
-        # 写入原始内容
-        akashi.remember("RSI超过70时要谨慎，这是一个重要的交易规则")
+        # Write original content
+        akashi.remember("Be careful when RSI exceeds 70, this is an important trading rule")
         
-        # 检查相似内容
+        # Check similar content
         result = akashi.check_duplicate(
-            "RSI超过70时要谨慎，这是一个重要的交易规则",
+            "Be careful when RSI exceeds 70, this is an important trading rule",
             threshold=0.8
         )
         
-        # 应该检测到重复（使用 Jaccard）
+        # Should detect duplicate (using Jaccard)
         assert isinstance(result.is_duplicate, bool)
     
     def test_remember_if_new(self, vfs):
         akashi = vfs.agent_memory("akashi")
         
-        # 第一次写入
+        # First write
         node1 = akashi.remember_if_new("Unique content here", threshold=0.9)
         assert node1 is not None
         
-        # 第二次写入相同内容
+        # Second write same content
         node2 = akashi.remember_if_new("Unique content here", threshold=0.9)
-        # 可能因为阈值设置返回 None 或新节点
+        # May return None or new node depending on threshold
 
 
 class TestDerivedLinks:
-    """推导链测试"""
+    """Derived chain tests"""
     
     def test_remember_derived(self, vfs):
         akashi = vfs.agent_memory("akashi")
         
-        # 创建来源
-        source1 = akashi.remember("RSI 分析", title="rsi")
-        source2 = akashi.remember("MACD 分析", title="macd")
+        # Create sources
+        source1 = akashi.remember("RSI analysis", title="rsi")
+        source2 = akashi.remember("MACD analysis", title="macd")
         
-        # 创建推导
+        # Create derived
         derived = akashi.remember_derived(
-            "综合判断：减仓",
+            "Combined judgment: reduce position",
             derived_from=[source1.path, source2.path],
             title="conclusion",
-            reasoning="技术面综合"
+            reasoning="Technical comprehensive"
         )
         
         assert derived is not None
         
-        # 验证链接
+        # verify链接
         from avm.advanced import DerivedLinkManager
         link_mgr = DerivedLinkManager(vfs.store)
         chains = link_mgr.get_derivation_chain(derived.path)
@@ -188,16 +188,16 @@ class TestDerivedLinks:
 
 
 class TestTimeQuery:
-    """时间查询测试"""
+    """time querytest"""
     
     def test_recall_recent(self, vfs):
         akashi = vfs.agent_memory("akashi")
         
-        # 写入一些记忆
+        # Write some memories
         akashi.remember("Recent content 1")
         akashi.remember("Recent content 2")
         
-        # 查询最近24小时
+        # query最近24小时
         result = akashi.recall_recent("content", time_range="last_24h", max_tokens=2000)
         
         assert "Relevant Memory" in result
@@ -211,7 +211,7 @@ class TestTimeQuery:
 
 
 class TestTagSystem:
-    """标签系统测试"""
+    """tag systemtest"""
     
     def test_by_tag(self, vfs):
         akashi = vfs.agent_memory("akashi")
@@ -247,7 +247,7 @@ class TestTagSystem:
 
 
 class TestAccessStats:
-    """访问统计测试"""
+    """access statisticstest"""
     
     def test_hot_memories(self, vfs):
         akashi = vfs.agent_memory("akashi")
@@ -266,7 +266,7 @@ class TestAccessStats:
 
 
 class TestExportSnapshot:
-    """导出/快照测试"""
+    """export/snapshot tests"""
     
     def test_export_jsonl(self, vfs):
         akashi = vfs.agent_memory("akashi")
@@ -291,18 +291,18 @@ class TestExportSnapshot:
         akashi = vfs.agent_memory("akashi")
         akashi.remember("Snapshot test content")
         
-        # 创建快照
+        # create快照
         snapshot_path = vfs.snapshot("test_snap")
         assert snapshot_path == "/snapshots/test_snap"
         
-        # 列出快照
+        # column出快照
         snapshots = vfs.list_snapshots()
         assert len(snapshots) >= 1
         assert snapshots[0]["name"] == "test_snap"
 
 
 class TestSync:
-    """同步测试"""
+    """sync tests"""
     
     def test_sync_to_directory(self, vfs):
         akashi = vfs.agent_memory("akashi")
@@ -314,13 +314,13 @@ class TestSync:
             assert result["exported"] >= 1
             assert result["imported"] >= 0
             
-            # 检查文件是否创建
+            # checkfileyesnocreate
             files = os.listdir(sync_dir)
             assert len(files) >= 1
 
 
 class TestMultiAgent:
-    """多 Agent 测试"""
+    """多 Agent test"""
     
     def test_permission_enforcement(self, vfs):
         yuze = vfs.agent_memory("yuze")
@@ -329,7 +329,7 @@ class TestMultiAgent:
         with pytest.raises(PermissionError):
             yuze.remember("Test", namespace="market")
         
-        # 这个应该可以
+        # thisshouldcan
         node = yuze.remember("Project update", namespace="projects")
         assert node is not None
     
@@ -337,12 +337,12 @@ class TestMultiAgent:
         akashi = vfs.agent_memory("akashi")
         yuze = vfs.agent_memory("yuze")
         
-        # akashi 写入 market
+        # akashi write market
         akashi.remember("Market analysis", namespace="market", title="btc")
         
-        # yuze 应该能读到
+        # yuze should能读到
         context = yuze.recall("Market", max_tokens=1000)
-        # yuze 可以读 shared，但可能因为检索结果而变化
+        # yuze can读 shared，但可能because检索result而变化
         assert isinstance(context, str)
     
     def test_audit_log(self, vfs):
@@ -355,22 +355,22 @@ class TestMultiAgent:
 
 
 class TestVersioning:
-    """版本测试"""
+    """versioning tests"""
     
     def test_append_only(self, vfs):
         akashi = vfs.agent_memory("akashi")
         
         path = "/memory/shared/market/VERSION_TEST.md"
         
-        # 写入多个版本
+        # write多个version
         akashi.remember("Version 1", path=path)
         akashi.remember("Version 2", path=path)
         
-        # 应该有多个版本文件
+        # should有多个versionfile
         nodes = vfs.list("/memory/shared/market")
         version_nodes = [n for n in nodes if "VERSION_TEST" in n.path]
         
-        # 至少有原始 + 1个版本
+        # 至少有原始 + 1个version
         assert len(version_nodes) >= 1
 
 

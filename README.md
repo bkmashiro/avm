@@ -112,19 +112,19 @@ pip install fusepy
 ### Python API
 
 ```python
-from vfs import VFS
+from avm import AVM
 
-vfs = VFS()
+avm = AVM()
 
 # Read/Write
-vfs.write("/memory/lesson.md", "# Trading Lesson\n\nRSI > 70 = overbought")
-node = vfs.read("/memory/lesson.md")
+avm.write("/memory/lesson.md", "# Trading Lesson\n\nRSI > 70 = overbought")
+node = avm.read("/memory/lesson.md")
 
 # Search
-results = vfs.search("RSI")
+results = avm.search("RSI")
 
 # Agent Memory
-mem = vfs.agent_memory("akashi")
+mem = avm.agent_memory("akashi")
 mem.remember("NVDA showing weakness", tags=["market", "nvda"])
 context = mem.recall("NVDA risk", max_tokens=4000)
 ```
@@ -288,7 +288,7 @@ cat /mnt/avm/memory/market/NVDA.md
 ## Linux-Style Permissions
 
 ```python
-vfs.init_permissions({
+avm.init_permissions({
     "users": {
         "akashi": {
             "groups": ["trading", "admin"],
@@ -302,11 +302,11 @@ vfs.init_permissions({
 })
 
 # Check permissions
-user = vfs.get_user("akashi")
-vfs.check_permission(user, "/memory/private/akashi/note.md", "write")
+user = avm.get_user("akashi")
+avm.check_permission(user, "/memory/private/akashi/note.md", "write")
 
 # API keys for skills
-key = vfs.create_api_key(user, paths=["/memory/*"], actions=["read"])
+key = avm.create_api_key(user, paths=["/memory/*"], actions=["read"])
 ```
 
 ## Multi-Bot Architecture
@@ -327,7 +327,7 @@ key = vfs.create_api_key(user, paths=["/memory/*"], actions=["read"])
 
 ## Database
 
-Default location: `~/.local/share/vfs/vfs.db`
+Default location: `~/.local/share/vfs/avm.db`
 
 Override:
 ```bash

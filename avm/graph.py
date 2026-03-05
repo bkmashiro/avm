@@ -58,7 +58,7 @@ class KVGraph:
                  edge_type: EdgeType = EdgeType.RELATED,
                  weight: float = 1.0,
                  meta: Dict = None) -> Edge:
-        """add边"""
+        """addedge"""
         edge = Edge(
             source=source,
             target=target,

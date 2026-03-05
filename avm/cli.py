@@ -18,9 +18,9 @@ import sys
 from pathlib import Path
 from typing import Optional
 
-from .core import VFS
+from .core import AVM
 from .config import load_config
-from .node import VFSNode, NodeType
+from .node import AVMNode, NodeType
 from .graph import EdgeType
 
 

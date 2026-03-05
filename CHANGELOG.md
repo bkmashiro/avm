@@ -20,7 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.8.0] - 2026-03-05
 
 ### Added
-- **Two-phase retrieval**: `vfs_browse` + `vfs_fetch` for token efficiency
+- **Two-phase retrieval**: `avm_browse` + `avm_fetch` for token efficiency
 - 75% token savings on large result sets
 
 ## [0.7.0] - 2026-03-05
@@ -76,7 +76,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.1.0] - 2026-03-05
 
 ### Added
-- Core VFS functionality
+- Core AVM functionality
 - SQLite storage with FTS5
 - Knowledge graph (edges)
 - Read/write/search/link operations

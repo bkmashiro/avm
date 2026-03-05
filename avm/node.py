@@ -24,7 +24,7 @@ class Permission(Enum):
 
 
 @dataclass
-class VFSNode:
+class AVMNode:
     """
     VFSnode
     
@@ -93,7 +93,7 @@ class VFSNode:
         }
     
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "VFSNode":
+    def from_dict(cls, data: Dict[str, Any]) -> "AVMNode":
         """fromdictcreate"""
         return cls(
             path=data["path"],
@@ -106,7 +106,7 @@ class VFSNode:
         )
     
     def __repr__(self) -> str:
-        return f"VFSNode({self.path}, v{self.version}, {len(self.content)} bytes)"
+        return f"AVMNode({self.path}, v{self.version}, {len(self.content)} bytes)"
 
 
 @dataclass

@@ -1,5 +1,5 @@
 """
-test_graph.py - KVGraph 测试
+test_graph.py - KVGraph test
 """
 
 import pytest
@@ -8,10 +8,10 @@ from avm.graph import KVGraph, Edge, EdgeType
 
 
 class TestEdge:
-    """Edge 测试"""
+    """Edge test"""
     
     def test_create_edge(self):
-        """创建边"""
+        """createedge"""
         edge = Edge(
             source="/research/AAPL.md",
             target="/research/MSFT.md",
@@ -25,7 +25,7 @@ class TestEdge:
         assert edge.weight == 0.8
     
     def test_edge_to_tuple(self):
-        """边转元组"""
+        """edge转元组"""
         edge = Edge(
             source="/a",
             target="/b",
@@ -38,10 +38,10 @@ class TestEdge:
 
 
 class TestKVGraph:
-    """KVGraph 测试"""
+    """KVGraph test"""
     
     def test_add_edge(self):
-        """添加边"""
+        """addedge"""
         g = KVGraph()
         
         edge = g.add_edge("/a", "/b", EdgeType.PEER)
@@ -52,7 +52,7 @@ class TestKVGraph:
         assert g.node_count == 2
     
     def test_remove_edge(self):
-        """删除边"""
+        """deleteedge"""
         g = KVGraph()
         g.add_edge("/a", "/b", EdgeType.PEER)
         g.add_edge("/a", "/c", EdgeType.PARENT)
@@ -63,7 +63,7 @@ class TestKVGraph:
         assert g.edge_count == 1
     
     def test_get_outgoing(self):
-        """获取出边"""
+        """get出edge"""
         g = KVGraph()
         g.add_edge("/a", "/b", EdgeType.PEER)
         g.add_edge("/a", "/c", EdgeType.PARENT)
@@ -76,7 +76,7 @@ class TestKVGraph:
         assert targets == {"/b", "/c"}
     
     def test_get_outgoing_filtered(self):
-        """按类型过滤出边"""
+        """按typefilter出edge"""
         g = KVGraph()
         g.add_edge("/a", "/b", EdgeType.PEER)
         g.add_edge("/a", "/c", EdgeType.PARENT)
@@ -87,7 +87,7 @@ class TestKVGraph:
         assert edges[0].target == "/b"
     
     def test_get_incoming(self):
-        """获取入边"""
+        """get入edge"""
         g = KVGraph()
         g.add_edge("/a", "/c", EdgeType.PEER)
         g.add_edge("/b", "/c", EdgeType.PEER)
@@ -99,7 +99,7 @@ class TestKVGraph:
         assert sources == {"/a", "/b"}
     
     def test_get_neighbors(self):
-        """获取邻居"""
+        """get邻居"""
         g = KVGraph()
         g.add_edge("/a", "/b")
         g.add_edge("/c", "/a")
@@ -109,7 +109,7 @@ class TestKVGraph:
         assert neighbors == {"/b", "/c"}
     
     def test_find_path(self):
-        """查找路径"""
+        """查找path"""
         g = KVGraph()
         g.add_edge("/a", "/b")
         g.add_edge("/b", "/c")
@@ -120,7 +120,7 @@ class TestKVGraph:
         assert path == ["/a", "/b", "/c", "/d"]
     
     def test_find_path_not_found(self):
-        """路径不存在"""
+        """path不exists"""
         g = KVGraph()
         g.add_edge("/a", "/b")
         g.add_edge("/c", "/d")
@@ -130,7 +130,7 @@ class TestKVGraph:
         assert path is None
     
     def test_get_subgraph(self):
-        """获取子图"""
+        """get子图"""
         g = KVGraph()
         g.add_edge("/a", "/b")
         g.add_edge("/b", "/c")
@@ -143,7 +143,7 @@ class TestKVGraph:
         assert sub.edge_count >= 2
     
     def test_to_adjacency_list(self):
-        """导出邻接表"""
+        """export邻接table"""
         g = KVGraph()
         g.add_edge("/a", "/b", EdgeType.PEER)
         g.add_edge("/a", "/c", EdgeType.PARENT)

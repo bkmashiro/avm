@@ -10,8 +10,8 @@ from datetime import datetime, timedelta
 from typing import Callable, Optional, Dict, List
 from pathlib import Path
 
-from .store import VFSStore
-from .node import VFSNode
+from .store import AVMStore
+from .node import AVMNode
 
 
 class RefreshScheduler:
@@ -21,7 +21,7 @@ class RefreshScheduler:
     scheduledrefreshexpired的 live node
     """
     
-    def __init__(self, store: VFSStore, interval_seconds: int = 60):
+    def __init__(self, store: AVMStore, interval_seconds: int = 60):
         """
         Args:
             store: VFS storage
@@ -31,9 +31,9 @@ class RefreshScheduler:
         self.interval = interval_seconds
         self._stop_event = threading.Event()
         self._thread: Optional[threading.Thread] = None
-        self._callbacks: List[Callable[[VFSNode], None]] = []
+        self._callbacks: List[Callable[[AVMNode], None]] = []
     
-    def add_callback(self, callback: Callable[[VFSNode], None]):
+    def add_callback(self, callback: Callable[[AVMNode], None]):
         """addrefreshcallback"""
         self._callbacks.append(callback)
     
@@ -88,7 +88,7 @@ class RefreshManager:
     manualrefreshspecifiedpath或all live node
     """
     
-    def __init__(self, store: VFSStore):
+    def __init__(self, store: AVMStore):
         self.store = store
         self._providers = {}
     
@@ -96,7 +96,7 @@ class RefreshManager:
         """register provider"""
         self._providers[prefix] = provider
     
-    def refresh_path(self, path: str, force: bool = True) -> Optional[VFSNode]:
+    def refresh_path(self, path: str, force: bool = True) -> Optional[AVMNode]:
         """refreshspecifiedpath"""
         for prefix, provider in self._providers.items():
             if path.startswith(prefix):
@@ -104,7 +104,7 @@ class RefreshManager:
         
         return None
     
-    def refresh_prefix(self, prefix: str) -> List[VFSNode]:
+    def refresh_prefix(self, prefix: str) -> List[AVMNode]:
         """refreshspecifiedprefixunderallnode"""
         nodes = self.store.list_nodes(prefix, limit=1000)
         refreshed = []
@@ -126,13 +126,13 @@ class RefreshManager:
         
         return stats
     
-    def get_expired(self) -> List[VFSNode]:
+    def get_expired(self) -> List[AVMNode]:
         """getallexpirednode"""
         nodes = self.store.list_nodes("/live", limit=1000)
         return [n for n in nodes if n.is_expired]
 
 
-def refresh_all_providers(store: VFSStore) -> Dict[str, int]:
+def refresh_all_providers(store: AVMStore) -> Dict[str, int]:
     """
     refreshall provider
     

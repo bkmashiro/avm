@@ -15,8 +15,8 @@ from datetime import datetime
 from typing import List, Optional, Dict, Any, Tuple
 from pathlib import Path
 
-from .store import VFSStore
-from .node import VFSNode
+from .store import AVMStore
+from .node import AVMNode
 
 
 class EmbeddingBackend(ABC):
@@ -148,7 +148,7 @@ class EmbeddingStore:
     Uses SQLite for vectors, supports cosine similarity search
     """
     
-    def __init__(self, store: VFSStore, backend: EmbeddingBackend):
+    def __init__(self, store: AVMStore, backend: EmbeddingBackend):
         self.store = store
         self.backend = backend
         self._init_table()
@@ -179,7 +179,7 @@ class EmbeddingStore:
         """calculatecontenthash"""
         return hashlib.sha256(content.encode()).hexdigest()[:16]
     
-    def embed_node(self, node: VFSNode, force: bool = False) -> bool:
+    def embed_node(self, node: AVMNode, force: bool = False) -> bool:
         """
         nodegenerate embedding
         
@@ -195,7 +195,7 @@ class EmbeddingStore:
                     (node.path,)
                 ).fetchone()
                 if row and row[0] == content_hash:
-                    return False  # already存在且contentunchanged
+                    return False  # alreadyexists且contentunchanged
         
         # generate embedding
         # usetitle + contentfirst2000chars
@@ -230,7 +230,7 @@ class EmbeddingStore:
         return count
     
     def search(self, query: str, k: int = 5, 
-               prefix: str = None) -> List[Tuple[VFSNode, float]]:
+               prefix: str = None) -> List[Tuple[AVMNode, float]]:
         """
         semanticsearch
         

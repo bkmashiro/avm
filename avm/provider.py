@@ -1,7 +1,7 @@
 """
 vfs/provider.py - data provider
 
-Providers fetch data from external sources and convert to VFSNode.
+Providers fetch data from external sources and convert to AVMNode.
 Supports:
 - LiveProvider: Live data (with TTL cache)
 - StaticProvider: Static data (manual update)
@@ -12,16 +12,16 @@ from datetime import datetime
 from typing import Dict, List, Optional, Any
 import json
 
-from .node import VFSNode, NodeType
-from .store import VFSStore
+from .node import AVMNode, NodeType
+from .store import AVMStore
 
 
-class VFSProvider(ABC):
+class AVMProvider(ABC):
     """
     Data provider base class
     """
     
-    def __init__(self, store: VFSStore, prefix: str):
+    def __init__(self, store: AVMStore, prefix: str):
         """
         Args:
             store: VFS storage
@@ -31,7 +31,7 @@ class VFSProvider(ABC):
         self.prefix = prefix
     
     @abstractmethod
-    def fetch(self, path: str) -> Optional[VFSNode]:
+    def fetch(self, path: str) -> Optional[AVMNode]:
         """
         Fetch data from source
         
@@ -39,7 +39,7 @@ class VFSProvider(ABC):
         """
         pass
     
-    def get(self, path: str, force_refresh: bool = False) -> Optional[VFSNode]:
+    def get(self, path: str, force_refresh: bool = False) -> Optional[AVMNode]:
         """
         Get node (with cache)
         
@@ -73,7 +73,7 @@ class VFSProvider(ABC):
         return count
 
 
-class LiveProvider(VFSProvider):
+class LiveProvider(AVMProvider):
     """
     Live data provider
     
@@ -82,18 +82,18 @@ class LiveProvider(VFSProvider):
     - Auto-refresh expired data on read
     """
     
-    def __init__(self, store: VFSStore, prefix: str, ttl_seconds: int = 300):
+    def __init__(self, store: AVMStore, prefix: str, ttl_seconds: int = 300):
         super().__init__(store, prefix)
         self.ttl_seconds = ttl_seconds
     
     def _make_node(self, path: str, content: str, 
-                   meta: Dict = None) -> VFSNode:
+                   meta: Dict = None) -> AVMNode:
         """Create node with TTL"""
         node_meta = meta or {}
         node_meta["ttl_seconds"] = self.ttl_seconds
         node_meta["provider"] = self.__class__.__name__
         
-        return VFSNode(
+        return AVMNode(
             path=path,
             content=content,
             meta=node_meta,
@@ -101,7 +101,7 @@ class LiveProvider(VFSProvider):
         )
 
 
-class StaticProvider(VFSProvider):
+class StaticProvider(AVMProvider):
     """
     Static data provider
     
@@ -111,12 +111,12 @@ class StaticProvider(VFSProvider):
     """
     
     def _make_node(self, path: str, content: str,
-                   meta: Dict = None) -> VFSNode:
+                   meta: Dict = None) -> AVMNode:
         """Create static node"""
         node_meta = meta or {}
         node_meta["provider"] = self.__class__.__name__
         
-        return VFSNode(
+        return AVMNode(
             path=path,
             content=content,
             meta=node_meta,
@@ -134,7 +134,7 @@ class AlpacaPositionsProvider(LiveProvider):
     Path: /live/positions.md
     """
     
-    def __init__(self, store: VFSStore, 
+    def __init__(self, store: AVMStore, 
                  api_key: str, secret_key: str,
                  base_url: str = "https://paper-api.alpaca.markets",
                  ttl_seconds: int = 60):
@@ -158,7 +158,7 @@ class AlpacaPositionsProvider(LiveProvider):
         with urllib.request.urlopen(req, timeout=10) as r:
             return json.loads(r.read())
     
-    def fetch(self, path: str) -> Optional[VFSNode]:
+    def fetch(self, path: str) -> Optional[AVMNode]:
         """Get position data"""
         try:
             if path == "/live/positions.md":
@@ -179,7 +179,7 @@ class AlpacaPositionsProvider(LiveProvider):
         
         return None
     
-    def _fetch_positions(self) -> VFSNode:
+    def _fetch_positions(self) -> AVMNode:
         """Get all positions"""
         positions = self._api_request("/v2/positions")
         account = self._api_request("/v2/account")
@@ -228,7 +228,7 @@ class AlpacaPositionsProvider(LiveProvider):
             }
         )
     
-    def _fetch_account(self) -> VFSNode:
+    def _fetch_account(self) -> AVMNode:
         """Get account info"""
         account = self._api_request("/v2/account")
         
@@ -252,7 +252,7 @@ class AlpacaPositionsProvider(LiveProvider):
             {"account_id": account.get("id")}
         )
     
-    def _fetch_position(self, symbol: str) -> VFSNode:
+    def _fetch_position(self, symbol: str) -> AVMNode:
         """Get single position"""
         try:
             pos = self._api_request(f"/v2/positions/{symbol}")
@@ -288,7 +288,7 @@ class AlpacaPositionsProvider(LiveProvider):
         )
 
 
-class MemoryProvider(VFSProvider):
+class MemoryProvider(AVMProvider):
     """
     Bot memory provider
     
@@ -296,19 +296,19 @@ class MemoryProvider(VFSProvider):
     Read-write
     """
     
-    def __init__(self, store: VFSStore):
+    def __init__(self, store: AVMStore):
         super().__init__(store, "/memory")
     
-    def fetch(self, path: str) -> Optional[VFSNode]:
+    def fetch(self, path: str) -> Optional[AVMNode]:
         """Memory area reads directly from store"""
         return self.store.get_node(path)
     
-    def write(self, path: str, content: str, meta: Dict = None) -> VFSNode:
+    def write(self, path: str, content: str, meta: Dict = None) -> AVMNode:
         """Write memory"""
         if not path.startswith("/memory"):
             raise PermissionError(f"Cannot write to {path}")
         
-        node = VFSNode(
+        node = AVMNode(
             path=path,
             content=content,
             meta=meta or {},
