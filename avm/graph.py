@@ -10,10 +10,10 @@ from enum import Enum
 
 class EdgeType(Enum):
     """edge type"""
-    PEER = "peer"           # peer relation（如：同sectorstock）
-    PARENT = "parent"       # parent-child relation（如：sector→individual stock）
-    CITATION = "citation"   # citation relation（如：research report引用）
-    DERIVED = "derived"     # derived relation（如：signal derived from指标）
+    PEER = "peer"           # peer relation (e.g., stocks in same sector)
+    PARENT = "parent"       # parent-child relation (e.g., sector→individual stock)
+    CITATION = "citation"   # citation relation (e.g., research report reference)
+    DERIVED = "derived"     # derived relation (e.g., signal derived from indicator)
     RELATED = "related"     # general relation
     VERSION_OF = "version_of"  # versionrelation（append-only memory）
 
@@ -43,15 +43,15 @@ class KVGraph:
     
     simple adjacency list implementation, supports：
     - add/delete edge
-    - queryanode的allrelated
-    - 按edge typefilter
-    - path查找（BFS）
+    - Query all related to a node
+    - Filter by edge type
+    - Path finding (BFS)
     """
     
     def __init__(self):
         # adjacency list: {source: [Edge, ...]}
         self._outgoing: Dict[str, List[Edge]] = {}
-        # 反toindex: {target: [Edge, ...]}
+        # Reverse index: {target: [Edge, ...]}
         self._incoming: Dict[str, List[Edge]] = {}
     
     def add_edge(self, source: str, target: str, 
@@ -83,13 +83,13 @@ class KVGraph:
         removed = 0
         
         if source in self._outgoing:
-            before = len(self._outgoing[source])
+            beenfore = len(self._outgoing[source])
             self._outgoing[source] = [
                 e for e in self._outgoing[source]
                 if not (e.target == target and 
                        (edge_type is None or e.edge_type == edge_type))
             ]
-            removed = before - len(self._outgoing[source])
+            removed = beenfore - len(self._outgoing[source])
         
         if target in self._incoming:
             self._incoming[target] = [
@@ -118,7 +118,7 @@ class KVGraph:
     
     def get_neighbors(self, node: str,
                       edge_type: EdgeType = None) -> Set[str]:
-        """getall邻居node"""
+        """Get all neighbor nodes"""
         neighbors = set()
         for e in self.get_outgoing(node, edge_type):
             neighbors.add(e.target)
@@ -128,7 +128,7 @@ class KVGraph:
     
     def find_path(self, source: str, target: str, 
                   max_depth: int = 5) -> Optional[List[str]]:
-        """BFS查找path"""
+        """BFS path finding"""
         if source == target:
             return [source]
         
@@ -149,7 +149,7 @@ class KVGraph:
         return None
     
     def get_subgraph(self, center: str, depth: int = 1) -> "KVGraph":
-        """get以anodecenter的subgraph"""
+        """Get subgraph centered on a node"""
         subgraph = KVGraph()
         visited = set()
         queue = [(center, 0)]

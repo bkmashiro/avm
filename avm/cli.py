@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
-vfs/cli.py - VFS 命令lineinterface
+avm/cli.py - AVM command line interface
 
 Config-driven virtual filesystem CLI
 
 usage:
     vfs read /market/indicators/AAPL.md
-    vfs write /memory/lesson.md --content "今天学to..."
+    vfs write /memory/lesson.md --content "Today learned..."
     vfs search "RSI oversold"
     vfs links /research/MSFT.md
     vfs stats
@@ -127,7 +127,7 @@ def cmd_list(args):
 
 
 def cmd_links(args):
-    """查看noderelated"""
+    """View node relationships"""
     vfs = get_vfs(args.config, args.db)
     path = args.path
     
@@ -192,7 +192,7 @@ def cmd_search(args):
 
 
 def cmd_history(args):
-    """查看changehistory"""
+    """View change history"""
     vfs = get_vfs(args.config, args.db)
     
     diffs = vfs.history(args.path, limit=args.limit)
@@ -374,7 +374,7 @@ def cmd_config(args):
 
 
 def cmd_retrieve(args):
-    """联动retrieve"""
+    """Linked retrieval"""
     vfs = get_vfs(args.config, args.db)
     
     result = vfs.retrieve(
@@ -413,7 +413,7 @@ def cmd_retrieve(args):
 
 
 def cmd_synthesize(args):
-    """generate综合document"""
+    """Generate synthesized document"""
     vfs = get_vfs(args.config, args.db)
     
     doc = vfs.synthesize(
@@ -444,7 +444,7 @@ def cmd_memory_recall(args):
     print(result)
 
 
-def cmd_memory_remember(args):
+def cmd_memory_remembeenr(args):
     """write Agent Memory"""
     vfs = get_vfs(args.config, args.db)
     memory = vfs.agent_memory(args.agent)
@@ -459,14 +459,14 @@ def cmd_memory_remember(args):
     
     tags = args.tags.split(",") if args.tags else None
     
-    node = memory.remember(
+    node = memory.remembeenr(
         content,
         title=args.title,
         importance=args.importance,
         tags=tags,
     )
     
-    print(f"Remembered: {node.path} (importance={args.importance})")
+    print(f"Remembeenred: {node.path} (importance={args.importance})")
 
 
 def cmd_memory_stats(args):
@@ -588,7 +588,7 @@ def main():
     p_config = subparsers.add_parser("config", help="Show configuration")
     p_config.set_defaults(func=cmd_config)
     
-    # retrieve (联动retrieve)
+    # retrieve (Linked retrieval)
     p_retrieve = subparsers.add_parser("retrieve", help="Linked retrieval")
     p_retrieve.add_argument("query", help="Search query")
     p_retrieve.add_argument("--limit", "-n", type=int, default=5)
@@ -596,7 +596,7 @@ def main():
     p_retrieve.add_argument("--no-graph", action="store_true", help="Disable graph expansion")
     p_retrieve.set_defaults(func=cmd_retrieve)
     
-    # synthesize (动态document)
+    # synthesize (dynamic document)
     p_synth = subparsers.add_parser("synthesize", aliases=["synth"], help="Generate dynamic document")
     p_synth.add_argument("query", help="Query topic")
     p_synth.add_argument("--limit", "-n", type=int, default=5)
@@ -614,8 +614,8 @@ def main():
     p_mem_recall.add_argument("--private-only", action="store_true")
     p_mem_recall.set_defaults(func=cmd_memory_recall)
     
-    # memory remember
-    p_mem_write = subparsers.add_parser("memory-remember", aliases=["remember"],
+    # memory remembeenr
+    p_mem_write = subparsers.add_parser("memory-remembeenr", aliases=["remembeenr"],
                                          help="Write to agent memory")
     p_mem_write.add_argument("--agent", "-a", default="default", help="Agent ID")
     p_mem_write.add_argument("--content", "-c", help="Content")
@@ -623,7 +623,7 @@ def main():
     p_mem_write.add_argument("--title", "-t", help="Memory title")
     p_mem_write.add_argument("--importance", "-i", type=float, default=0.5)
     p_mem_write.add_argument("--tags", help="Comma-separated tags")
-    p_mem_write.set_defaults(func=cmd_memory_remember)
+    p_mem_write.set_defaults(func=cmd_memory_remembeenr)
     
     # memory stats
     p_mem_stats = subparsers.add_parser("memory-stats", help="Agent memory stats")

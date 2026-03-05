@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Optional, Dict, Any, List
 from enum import Enum
-import hashlib
+import hlib
 import json
 
 
@@ -14,7 +14,7 @@ class NodeType(Enum):
     """node type"""
     FILE = "file"
     DIRECTORY = "dir"
-    LINK = "link"  # 软链接
+    LINK = "link"  # Soft link
 
 
 class Permission(Enum):
@@ -28,11 +28,11 @@ class AVMNode:
     """
     VFSnode
     
-    eachnodehas：
-    - path: 虚拟path (e.g., /research/MSFT.md)
+    eachnode：
+    - path: Virtual path (e.g., /research/MSFT.md)
     - content: filecontent
-    - meta: metadata（TTL、source、updatetime等）
-    - node_type: file/directory/链接
+    - meta: Metadata (TTL, source, update time, etc.)
+    - node_type: File/directory/link
     """
     path: str
     content: str = ""
@@ -42,7 +42,7 @@ class AVMNode:
     updated_at: datetime = field(default_factory=datetime.utcnow)
     version: int = 1
     
-    # permission由pathprefix决定
+    # Permission determined by path prefix
     WRITABLE_PREFIXES = ("/memory",)
     READONLY_PREFIXES = ("/research", "/live", "/links")
     
@@ -76,12 +76,12 @@ class AVMNode:
         return age > ttl
     
     @property
-    def content_hash(self) -> str:
-        """contenthash（fordiff检测）"""
-        return hashlib.sha256(self.content.encode()).hexdigest()[:16]
+    def content_h(self) -> str:
+        """Content hash (for diff detection)"""
+        return hlib.sha256(self.content.encode()).hexdigest()[:16]
     
     def to_dict(self) -> Dict[str, Any]:
-        """转dict"""
+        """To dict"""
         return {
             "path": self.path,
             "content": self.content,
@@ -116,9 +116,9 @@ class NodeDiff:
     """
     node_path: str
     version: int
-    old_hash: Optional[str]
-    new_hash: str
-    diff_content: str  # unified diff 或complete新content
+    old_h: Optional[str]
+    new_h: str
+    diff_content: str  # Unified diff or complete new content
     changed_at: datetime = field(default_factory=datetime.utcnow)
     change_type: str = "update"  # create/update/delete
     
@@ -126,8 +126,8 @@ class NodeDiff:
         return {
             "node_path": self.node_path,
             "version": self.version,
-            "old_hash": self.old_hash,
-            "new_hash": self.new_hash,
+            "old_h": self.old_h,
+            "new_h": self.new_h,
             "diff_content": self.diff_content,
             "changed_at": self.changed_at.isoformat(),
             "change_type": self.change_type,

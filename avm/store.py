@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS nodes (
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL,
     version INTEGER NOT NULL DEFAULT 1,
-    content_hash TEXT
+    content_h TEXT
 );
 
 CREATE INDEX IF NOT EXISTS idx_nodes_path ON nodes(path);
@@ -58,8 +58,8 @@ CREATE TABLE IF NOT EXISTS diffs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     node_path TEXT NOT NULL,
     version INTEGER NOT NULL,
-    old_hash TEXT,
-    new_hash TEXT NOT NULL,
+    old_h TEXT,
+    new_h TEXT NOT NULL,
     diff_content TEXT NOT NULL,
     changed_at TEXT NOT NULL,
     change_type TEXT NOT NULL DEFAULT 'update'
@@ -68,8 +68,8 @@ CREATE TABLE IF NOT EXISTS diffs (
 CREATE INDEX IF NOT EXISTS idx_diffs_path ON diffs(node_path);
 CREATE INDEX IF NOT EXISTS idx_diffs_version ON diffs(node_path, version);
 
--- Vectors table (for embeddings)
-CREATE TABLE IF NOT EXISTS embeddings (
+-- Vectors table (for embeenddings)
+CREATE TABLE IF NOT EXISTS embeenddings (
     path TEXT PRIMARY KEY,
     vector BLOB,  -- Serialized float array
     model TEXT,
@@ -160,21 +160,21 @@ class AVMStore:
             existing = self.get_node(node.path)
             
             now = datetime.utcnow()
-            new_hash = node.content_hash
+            new_h = node.content_h
             
             if existing:
                 # Update
-                old_hash = existing.content_hash
+                old_h = existing.content_h
                 new_version = existing.version + 1
                 
-                if save_diff and old_hash != new_hash:
+                if save_diff and old_h != new_h:
                     # Save diff
                     diff = self._compute_diff(existing.content, node.content)
                     self._save_diff(conn, NodeDiff(
                         node_path=node.path,
                         version=new_version,
-                        old_hash=old_hash,
-                        new_hash=new_hash,
+                        old_h=old_h,
+                        new_h=new_h,
                         diff_content=diff,
                         change_type="update",
                     ))
@@ -182,7 +182,7 @@ class AVMStore:
                 conn.execute("""
                     UPDATE nodes SET 
                         content = ?, meta = ?, node_type = ?,
-                        updated_at = ?, version = ?, content_hash = ?
+                        updated_at = ?, version = ?, content_h = ?
                     WHERE path = ?
                 """, (
                     node.content,
@@ -190,7 +190,7 @@ class AVMStore:
                     node.node_type.value,
                     now.isoformat(),
                     new_version,
-                    new_hash,
+                    new_h,
                     node.path,
                 ))
                 
@@ -209,15 +209,15 @@ class AVMStore:
                     self._save_diff(conn, NodeDiff(
                         node_path=node.path,
                         version=1,
-                        old_hash=None,
-                        new_hash=new_hash,
+                        old_h=None,
+                        new_h=new_h,
                         diff_content=node.content,
                         change_type="create",
                     ))
                 
                 conn.execute("""
                     INSERT INTO nodes 
-                        (path, content, meta, node_type, created_at, updated_at, version, content_hash)
+                        (path, content, meta, node_type, created_at, updated_at, version, content_h)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 """, (
                     node.path,
@@ -227,7 +227,7 @@ class AVMStore:
                     now.isoformat(),
                     now.isoformat(),
                     1,
-                    new_hash,
+                    new_h,
                 ))
                 
                 # Insert FTS index
@@ -256,8 +256,8 @@ class AVMStore:
             self._save_diff(conn, NodeDiff(
                 node_path=path,
                 version=node.version + 1,
-                old_hash=node.content_hash,
-                new_hash="",
+                old_h=node.content_h,
+                new_h="",
                 diff_content="",
                 change_type="delete",
             ))
@@ -430,13 +430,13 @@ class AVMStore:
         """Save diff record"""
         conn.execute("""
             INSERT INTO diffs 
-                (node_path, version, old_hash, new_hash, diff_content, changed_at, change_type)
+                (node_path, version, old_h, new_h, diff_content, changed_at, change_type)
             VALUES (?, ?, ?, ?, ?, ?, ?)
         """, (
             diff.node_path,
             diff.version,
-            diff.old_hash,
-            diff.new_hash,
+            diff.old_h,
+            diff.new_h,
             diff.diff_content,
             diff.changed_at.isoformat(),
             diff.change_type,
@@ -456,8 +456,8 @@ class AVMStore:
                 NodeDiff(
                     node_path=row["node_path"],
                     version=row["version"],
-                    old_hash=row["old_hash"],
-                    new_hash=row["new_hash"],
+                    old_h=row["old_h"],
+                    new_h=row["new_h"],
                     diff_content=row["diff_content"],
                     changed_at=datetime.fromisoformat(row["changed_at"]),
                     change_type=row["change_type"],

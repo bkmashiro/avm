@@ -26,7 +26,7 @@ class NewsProvider(LiveProvider):
         /live/news/crypto.md       - cryptocurrencynews
     """
     
-    # RSS 源
+    # RSS feeds
     RSS_SOURCES = {
         "market": [
             ("Yahoo Finance", "https://feeds.finance.yahoo.com/rss/2.0/headline?s=^DJI,^GSPC,^IXIC&region=US&lang=en-US"),

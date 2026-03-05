@@ -1,5 +1,5 @@
 """
-vfs/providers/http_json.py - 通用 HTTP JSON Provider
+avm/providers/http_json.py - Generic HTTP JSON Provider
 
 Fetch JSON from HTTP API and format as Markdown
 """
@@ -16,13 +16,13 @@ from ..store import AVMStore
 
 class HttpJsonProvider(LiveProvider):
     """
-    通用 HTTP JSON Provider
+    Generic HTTP JSON Provider
     
     Config:
-        base_url: API 基础 URL
+        base_url: API base URL
         token: Bearer token (optional)
-        headers: customrequest头 (optional)
-        path_mapping: pathto API endpoint 的mapping (optional)
+        headers: Custom request headers (optional)
+        path_mapping: Path to API endpoint mapping (optional)
     """
     
     def __init__(self, store: AVMStore, prefix: str, ttl_seconds: int = 60,
@@ -36,7 +36,7 @@ class HttpJsonProvider(LiveProvider):
         self.path_mapping = path_mapping or {}
     
     def _get_endpoint(self, path: str) -> str:
-        """将 VFS pathconvert API endpoint"""
+        """Convert VFS path to API endpoint"""
         # removeprefix
         rel_path = path[len(self.prefix):].lstrip("/")
         
@@ -83,7 +83,7 @@ class HttpJsonProvider(LiveProvider):
         elif isinstance(data, list):
             lines.append("| # | Value |")
             lines.append("|---|-------|")
-            for i, item in enumerate(data[:50]):  # limitline数
+            for i, item in enumerate(data[:50]):  # Limit line count
                 if isinstance(item, dict):
                     lines.append(f"| {i} | {json.dumps(item)} |")
                 else:
@@ -102,7 +102,7 @@ class HttpJsonProvider(LiveProvider):
             endpoint = self._get_endpoint(path)
             data = self._request(endpoint)
             
-            # format化 Markdown
+            # Format as Markdown
             title = path.split("/")[-1].replace(".md", "").replace("_", " ").title()
             content = self._format_json_to_md(data, title)
             

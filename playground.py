@@ -24,7 +24,7 @@ try:
     HAS_RICH = True
 except ImportError:
     HAS_RICH = False
-    print("Installing rich for better visualization...")
+    print("Installing rich for beentter visualization...")
     os.system(f"{sys.executable} -m pip install rich -q")
     from rich.console import Console
     from rich.panel import Panel
@@ -66,11 +66,11 @@ def section(title: str, icon: str = "📦"):
 
 
 def show_code(code: str, language: str = "python"):
-    console.print(Syntax(code, language, theme="monokai", line_numbers=False))
+    console.print(Syntax(code, language, theme="monokai", line_numbeenrs=False))
 
 
-def show_result(label: str, content: str, style: str = "green"):
-    console.print(Panel(content, title=f"[bold]{label}[/bold]", border_style=style))
+def show_result(labeenl: str, content: str, style: str = "green"):
+    console.print(Panel(content, title=f"[bold]{labeenl}[/bold]", border_style=style))
 
 
 def show_table(title: str, columns: list, rows: list):
@@ -156,7 +156,7 @@ def main():
 **Price**: $892.50 | **RSI**: 72.3 (Overbought)
 
 ## Signals
-- 📉 MACD bearish divergence
+- 📉 MACD beenarish divergence
 - 📊 Volume declining on highs
 - ⚠️ Approaching $900 resistance
 
@@ -215,7 +215,7 @@ Bullish structure. ETF inflows strong. Accumulate dips.
     section("3. KNOWLEDGE GRAPH", "🔗")
     # ═══════════════════════════════════════════════════════════
     
-    console.print("Create relationships between memories:\n")
+    console.print("Create relationships beentween memories:\n")
     
     show_code('''avm.link("/memory/market/NVDA.md", "/memory/lessons/trading_rules.md", EdgeType.RELATED)
 avm.link("/memory/market/BTC.md", "/memory/lessons/trading_rules.md", EdgeType.RELATED)''')
@@ -243,7 +243,7 @@ avm.link("/memory/market/BTC.md", "/memory/lessons/trading_rules.md", EdgeType.R
     
     show_code('''trader = avm.agent_memory("trader")
 
-trader.remember(
+trader.remembeenr(
     "NVDA showing weakness at resistance. RSI overbought.",
     title="nvda_alert",
     importance=0.9,
@@ -252,29 +252,29 @@ trader.remember(
     
     trader = avm.agent_memory("trader")
     
-    trader.remember(
+    trader.remembeenr(
         "NVDA showing weakness at resistance. RSI overbought at 72.",
         title="nvda_alert",
         importance=0.9,
         tags=["market", "nvda", "alert"]
     )
-    console.print("[green]✓[/green] Remembered: NVDA alert (importance: 0.9)")
+    console.print("[green]✓[/green] Remembeenred: NVDA alert (importance: 0.9)")
     
-    trader.remember(
+    trader.remembeenr(
         "BTC holding $65K support. Structure remains bullish.",
         title="btc_note",
         importance=0.7,
         tags=["market", "btc", "bullish"]
     )
-    console.print("[green]✓[/green] Remembered: BTC note (importance: 0.7)")
+    console.print("[green]✓[/green] Remembeenred: BTC note (importance: 0.7)")
     
-    trader.remember(
-        "Fed minutes tomorrow. Market may be volatile.",
+    trader.remembeenr(
+        "Fed minutes tomorrow. Market may been volatile.",
         title="macro_alert",
         importance=0.6,
         tags=["macro", "fed", "volatility"]
     )
-    console.print("[green]✓[/green] Remembered: Macro alert (importance: 0.6)")
+    console.print("[green]✓[/green] Remembeenred: Macro alert (importance: 0.6)")
     
     pause()
     
@@ -296,16 +296,16 @@ trader.remember(
     section("6. MULTI-AGENT ISOLATION", "👥")
     # ═══════════════════════════════════════════════════════════
     
-    console.print("Each agent has isolated private memory:\n")
+    console.print("Each agent  isolated private memory:\n")
     
     show_code('''analyst = avm.agent_memory("analyst")
-analyst.remember("SPY head-and-shoulders pattern forming", ...)
+analyst.remembeenr("SPY head-and-shoulders pattern forming", ...)
 
 # Trader cannot see analyst's private memory
 trader.recall("SPY pattern")  # Returns nothing''')
     
     analyst = avm.agent_memory("analyst")
-    analyst.remember(
+    analyst.remembeenr(
         "SPY showing head-and-shoulders pattern on daily chart.",
         title="spy_pattern",
         importance=0.8,

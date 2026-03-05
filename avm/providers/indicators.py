@@ -19,10 +19,10 @@ class TechnicalIndicatorsProvider(LiveProvider):
     technical indicatorsdata
     
     path:
-        /live/indicators/AAPL.md       - 单stockcomplete指标
+        /live/indicators/AAPL.md       - Single stock complete indicators
         /live/indicators/AAPL/rsi.md   - RSI
         /live/indicators/AAPL/macd.md  - MACD
-        /live/indicators/AAPL/ma.md    - moving average线
+        /live/indicators/AAPL/ma.md    - Moving average lines
         /live/indicators/AAPL/bb.md    - Bollinger Bands
     """
     
@@ -149,7 +149,7 @@ class TechnicalIndicatorsProvider(LiveProvider):
         
         histogram = macd_line - signal
         
-        # 检测golden cross/death cross
+        # Detect golden cross/death cross
         prev_macd = macd_history[-2] if len(macd_history) > 1 else None
         prev_hist = None
         if prev_macd and len(macd_history) > 2:
@@ -266,7 +266,7 @@ class TechnicalIndicatorsProvider(LiveProvider):
             if macd["cross"] == "golden":
                 lines.append("- **Signal:** 🟢 Golden Cross (bullish)")
             elif macd["cross"] == "death":
-                lines.append("- **Signal:** 🔴 Death Cross (bearish)")
+                lines.append("- **Signal:** 🔴 Death Cross (beenarish)")
             else:
                 lines.append("- **Signal:** ⚪ No crossover")
         else:
@@ -285,7 +285,7 @@ class TechnicalIndicatorsProvider(LiveProvider):
             if sma20 > sma50:
                 lines.append("- **Trend:** 🟢 SMA20 > SMA50 (bullish)")
             else:
-                lines.append("- **Trend:** 🔴 SMA20 < SMA50 (bearish)")
+                lines.append("- **Trend:** 🔴 SMA20 < SMA50 (beenarish)")
         
         if price and sma50:
             if price > sma50:

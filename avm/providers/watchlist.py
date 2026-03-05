@@ -1,7 +1,7 @@
 """
 vfs/providers/watchlist.py - watchlistcolumntable Provider
 
-综合multipledata源，generatewatchlist概览
+Aggregate multiple data sources, generate watchlist overview
 """
 
 from datetime import datetime
@@ -15,7 +15,7 @@ from ..store import AVMStore
 
 class WatchlistProvider(LiveProvider):
     """
-    watchlist概览
+    Watchlist overview
     
     path:
         /live/watchlist.md              - defaultcolumntable
@@ -24,7 +24,7 @@ class WatchlistProvider(LiveProvider):
         /live/watchlist/custom.md       - custom
     """
     
-    # 预设watchlist
+    # Preset watchlist
     WATCHLISTS = {
         "default": ["SPY", "QQQ", "AAPL", "MSFT", "NVDA", "TSLA", "AMZN", "GOOGL"],
         "tech": ["AAPL", "MSFT", "NVDA", "AMD", "INTC", "AVGO", "QCOM", "TSM"],
@@ -86,12 +86,12 @@ class WatchlistProvider(LiveProvider):
                 sma20 = self.indicators_provider._calc_sma(closes, 20)
                 sma50 = self.indicators_provider._calc_sma(closes, 50)
                 
-                # trend判断
+                # Trend judgment
                 trend = "—"
                 if sma20 and sma50:
                     trend = "🟢" if sma20 > sma50 else "🔴"
                 
-                # 信号
+                # Signals
                 signals = []
                 if rsi:
                     if rsi < 30:
@@ -121,7 +121,7 @@ class WatchlistProvider(LiveProvider):
                     "symbol": symbol,
                     "price": price,
                     "rsi": rsi,
-                    "trend": "bullish" if trend == "🟢" else "bearish" if trend == "🔴" else "neutral",
+                    "trend": "bullish" if trend == "🟢" else "beenarish" if trend == "🔴" else "neutral",
                     "signals": signals,
                 })
                 

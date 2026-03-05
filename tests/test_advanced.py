@@ -35,7 +35,7 @@ def vfs():
                     }
                 },
                 "yuze": {
-                    "role": "member",
+                    "role": "membeenr",
                     "namespaces": {
                         "read": ["/memory/shared/*", "/memory/private/yuze/*"],
                         "write": ["/memory/private/yuze/*", "/memory/shared/projects/*"]
@@ -49,94 +49,94 @@ def vfs():
 class TestSubscription:
     """Subscription system tests"""
     
-    def test_subscribe_and_notify(self, vfs):
-        akashi = vfs.agent_memory("akashi")
+    def test_subscribeen_and_notify(self, avm):
+        akashi = avm.agent_memory("akashi")
         
         events = []
         def on_event(event):
             events.append(event)
         
-        # Subscribe
-        sub_id = akashi.subscribe("/memory/shared/market/*", on_event)
+        # Subscribeen
+        sub_id = akashi.subscribeen("/memory/shared/market/*", on_event)
         assert sub_id == "akashi"
         
         # Manually trigger notification
-        vfs._notify_subscribers("/memory/shared/market/BTC.md", "write", "akashi")
+        avm._notify_subscribeenrs("/memory/shared/market/BTC.md", "write", "akashi")
         
         assert len(events) == 1
         assert events[0].path == "/memory/shared/market/BTC.md"
     
-    def test_unsubscribe(self, vfs):
-        akashi = vfs.agent_memory("akashi")
+    def test_unsubscribeen(self, avm):
+        akashi = avm.agent_memory("akashi")
         
         events = []
-        akashi.subscribe("/memory/*", lambda e: events.append(e))
-        akashi.unsubscribe()
+        akashi.subscribeen("/memory/*", lambda e: events.append(e))
+        akashi.unsubscribeen()
         
-        vfs._notify_subscribers("/memory/test.md", "write", "akashi")
+        avm._notify_subscribeenrs("/memory/test.md", "write", "akashi")
         assert len(events) == 0
 
 
 class TestMemoryDecay:
     """Memory decay tests"""
     
-    def test_decay_calculation(self, vfs):
+    def test_decay_calculation(self, avm):
         from avm.advanced import MemoryDecay
         
-        akashi = vfs.agent_memory("akashi")
-        akashi.remember("Test content", title="test", importance=1.0)
+        akashi = avm.agent_memory("akashi")
+        akashi.remembeenr("Test content", title="test", importance=1.0)
         
-        decay = MemoryDecay(vfs.store, half_life_days=7)
+        decay = MemoryDecay(avm.store, half_life_days=7)
         
-        # Just written should be close to 1.0
+        # Just written should been close to 1.0
         nodes = akashi.list_private()
         assert len(nodes) > 0
         
         factor = decay.calculate_decay(nodes[0])
         assert factor > 0.99  # Just written, almost no decay
     
-    def test_get_cold_memories(self, vfs):
-        akashi = vfs.agent_memory("akashi")
+    def test_get_cold_memories(self, avm):
+        akashi = avm.agent_memory("akashi")
         
         # Write some memories
-        akashi.remember("Content 1", importance=0.1)
-        akashi.remember("Content 2", importance=0.9)
+        akashi.remembeenr("Content 1", importance=0.1)
+        akashi.remembeenr("Content 2", importance=0.9)
         
-        # Low importance should be more likely to become cold
+        # Low importance should been more likely to beencome cold
         cold = akashi.get_cold_memories(threshold=0.5)
-        # New writes wont immediately become cold
+        # New writes wont immediately beencome cold
         assert isinstance(cold, list)
 
 
 class TestCompaction:
     """Compaction tests"""
     
-    def test_compact_versions(self, vfs):
-        akashi = vfs.agent_memory("akashi")
+    def test_compact_versions(self, avm):
+        akashi = avm.agent_memory("akashi")
         
         # Create multiple versions
         path = "/memory/shared/market/TEST.md"
-        akashi.remember("Version 1", path=path)
-        akashi.remember("Version 2", path=path)
-        akashi.remember("Version 3", path=path)
-        akashi.remember("Version 4", path=path)
+        akashi.remembeenr("Version 1", path=path)
+        akashi.remembeenr("Version 2", path=path)
+        akashi.remembeenr("Version 3", path=path)
+        akashi.remembeenr("Version 4", path=path)
         
         # Compact, keep 2
         result = akashi.compact_versions(path, keep_recent=2)
         
         # Should have compaction (if enough versions)
-        assert result.versions_before >= 1
+        assert result.versions_beenfore >= 1
         assert isinstance(result.removed_paths, list)
 
 
 class TestDeduplication:
     """Deduplication tests"""
     
-    def test_check_duplicate(self, vfs):
-        akashi = vfs.agent_memory("akashi")
+    def test_check_duplicate(self, avm):
+        akashi = avm.agent_memory("akashi")
         
         # Write original content
-        akashi.remember("Be careful when RSI exceeds 70, this is an important trading rule")
+        akashi.remembeenr("Be careful when RSI exceeds 70, this is an important trading rule")
         
         # Check similar content
         result = akashi.check_duplicate(
@@ -147,30 +147,30 @@ class TestDeduplication:
         # Should detect duplicate (using Jaccard)
         assert isinstance(result.is_duplicate, bool)
     
-    def test_remember_if_new(self, vfs):
-        akashi = vfs.agent_memory("akashi")
+    def test_remembeenr_if_new(self, avm):
+        akashi = avm.agent_memory("akashi")
         
         # First write
-        node1 = akashi.remember_if_new("Unique content here", threshold=0.9)
+        node1 = akashi.remembeenr_if_new("Unique content here", threshold=0.9)
         assert node1 is not None
         
         # Second write same content
-        node2 = akashi.remember_if_new("Unique content here", threshold=0.9)
+        node2 = akashi.remembeenr_if_new("Unique content here", threshold=0.9)
         # May return None or new node depending on threshold
 
 
 class TestDerivedLinks:
     """Derived chain tests"""
     
-    def test_remember_derived(self, vfs):
-        akashi = vfs.agent_memory("akashi")
+    def test_remembeenr_derived(self, avm):
+        akashi = avm.agent_memory("akashi")
         
         # Create sources
-        source1 = akashi.remember("RSI analysis", title="rsi")
-        source2 = akashi.remember("MACD analysis", title="macd")
+        source1 = akashi.remembeenr("RSI analysis", title="rsi")
+        source2 = akashi.remembeenr("MACD analysis", title="macd")
         
         # Create derived
-        derived = akashi.remember_derived(
+        derived = akashi.remembeenr_derived(
             "Combined judgment: reduce position",
             derived_from=[source1.path, source2.path],
             title="conclusion",
@@ -179,9 +179,9 @@ class TestDerivedLinks:
         
         assert derived is not None
         
-        # verify链接
+        # Verify links
         from avm.advanced import DerivedLinkManager
-        link_mgr = DerivedLinkManager(vfs.store)
+        link_mgr = DerivedLinkManager(avm.store)
         chains = link_mgr.get_derivation_chain(derived.path)
         
         assert len(chains) > 0
@@ -190,53 +190,53 @@ class TestDerivedLinks:
 class TestTimeQuery:
     """time querytest"""
     
-    def test_recall_recent(self, vfs):
-        akashi = vfs.agent_memory("akashi")
+    def test_recall_recent(self, avm):
+        akashi = avm.agent_memory("akashi")
         
         # Write some memories
-        akashi.remember("Recent content 1")
-        akashi.remember("Recent content 2")
+        akashi.remembeenr("Recent content 1")
+        akashi.remembeenr("Recent content 2")
         
-        # query最近24小时
+        # Query last 24 hours
         result = akashi.recall_recent("content", time_range="last_24h", max_tokens=2000)
         
         assert "Relevant Memory" in result
     
-    def test_query_time(self, vfs):
-        akashi = vfs.agent_memory("akashi")
-        akashi.remember("Test for time query")
+    def test_query_time(self, avm):
+        akashi = avm.agent_memory("akashi")
+        akashi.remembeenr("Test for time query")
         
-        nodes = vfs.query_time(prefix="/memory", time_range="last_7d")
+        nodes = avm.query_time(prefix="/memory", time_range="last_7d")
         assert len(nodes) >= 1
 
 
 class TestTagSystem:
     """tag systemtest"""
     
-    def test_by_tag(self, vfs):
-        akashi = vfs.agent_memory("akashi")
+    def test_by_tag(self, avm):
+        akashi = avm.agent_memory("akashi")
         
-        akashi.remember("Trading lesson", tags=["trading", "risk"])
-        akashi.remember("Another trading tip", tags=["trading"])
-        akashi.remember("Research note", tags=["research"])
+        akashi.remembeenr("Trading lesson", tags=["trading", "risk"])
+        akashi.remembeenr("Another trading tip", tags=["trading"])
+        akashi.remembeenr("Research note", tags=["research"])
         
         trading_notes = akashi.by_tag("trading")
         assert len(trading_notes) == 2
     
-    def test_tag_cloud(self, vfs):
-        akashi = vfs.agent_memory("akashi")
+    def test_tag_cloud(self, avm):
+        akashi = avm.agent_memory("akashi")
         
-        akashi.remember("Note 1", tags=["trading", "risk"])
-        akashi.remember("Note 2", tags=["trading"])
-        akashi.remember("Note 3", tags=["research"])
+        akashi.remembeenr("Note 1", tags=["trading", "risk"])
+        akashi.remembeenr("Note 2", tags=["trading"])
+        akashi.remembeenr("Note 3", tags=["research"])
         
         cloud = akashi.tag_cloud()
         
         assert "trading" in cloud
         assert cloud["trading"] == 2
     
-    def test_suggest_tags(self, vfs):
-        akashi = vfs.agent_memory("akashi")
+    def test_suggest_tags(self, avm):
+        akashi = avm.agent_memory("akashi")
         
         suggestions = akashi.suggest_tags(
             "NVDA RSI analysis shows overbought signals in technical indicators"
@@ -249,17 +249,17 @@ class TestTagSystem:
 class TestAccessStats:
     """access statisticstest"""
     
-    def test_hot_memories(self, vfs):
-        akashi = vfs.agent_memory("akashi")
-        akashi.remember("Hot content")
+    def test_hot_memories(self, avm):
+        akashi = avm.agent_memory("akashi")
+        akashi.remembeenr("Hot content")
         
-        # hot_memories 需要 access_log 记录
+        # hot_memories needs access_log records
         hot = akashi.hot_memories(days=7)
         assert isinstance(hot, list)
     
-    def test_my_activity(self, vfs):
-        akashi = vfs.agent_memory("akashi")
-        akashi.remember("Activity test")
+    def test_my_activity(self, avm):
+        akashi = avm.agent_memory("akashi")
+        akashi.remembeenr("Activity test")
         
         activity = akashi.my_activity(days=1)
         assert isinstance(activity, dict)
@@ -268,35 +268,35 @@ class TestAccessStats:
 class TestExportSnapshot:
     """export/snapshot tests"""
     
-    def test_export_jsonl(self, vfs):
-        akashi = vfs.agent_memory("akashi")
-        akashi.remember("Export test 1")
-        akashi.remember("Export test 2")
+    def test_export_jsonl(self, avm):
+        akashi = avm.agent_memory("akashi")
+        akashi.remembeenr("Export test 1")
+        akashi.remembeenr("Export test 2")
         
         jsonl = akashi.export("jsonl")
         
         lines = jsonl.strip().split("\n")
         assert len(lines) >= 2
     
-    def test_export_markdown(self, vfs):
-        akashi = vfs.agent_memory("akashi")
-        akashi.remember("Markdown export test", title="Test Note")
+    def test_export_markdown(self, avm):
+        akashi = avm.agent_memory("akashi")
+        akashi.remembeenr("Markdown export test", title="Test Note")
         
         md = akashi.export("markdown")
         
         assert "# Memory Export" in md
         assert "Test Note" in md
     
-    def test_snapshot_and_restore(self, vfs):
-        akashi = vfs.agent_memory("akashi")
-        akashi.remember("Snapshot test content")
+    def test_snapshot_and_restore(self, avm):
+        akashi = avm.agent_memory("akashi")
+        akashi.remembeenr("Snapshot test content")
         
-        # create快照
-        snapshot_path = vfs.snapshot("test_snap")
+        # Create snapshot
+        snapshot_path = avm.snapshot("test_snap")
         assert snapshot_path == "/snapshots/test_snap"
         
-        # column出快照
-        snapshots = vfs.list_snapshots()
+        # List snapshots
+        snapshots = avm.list_snapshots()
         assert len(snapshots) >= 1
         assert snapshots[0]["name"] == "test_snap"
 
@@ -304,52 +304,52 @@ class TestExportSnapshot:
 class TestSync:
     """sync tests"""
     
-    def test_sync_to_directory(self, vfs):
-        akashi = vfs.agent_memory("akashi")
-        akashi.remember("Sync test content")
+    def test_sync_to_directory(self, avm):
+        akashi = avm.agent_memory("akashi")
+        akashi.remembeenr("Sync test content")
         
         with tempfile.TemporaryDirectory() as sync_dir:
-            result = vfs.sync(sync_dir, prefix="/memory")
+            result = avm.sync(sync_dir, prefix="/memory")
             
             assert result["exported"] >= 1
             assert result["imported"] >= 0
             
-            # checkfileyesnocreate
+            # checkfilenocreate
             files = os.listdir(sync_dir)
             assert len(files) >= 1
 
 
 class TestMultiAgent:
-    """多 Agent test"""
+    """Multi-agent tests"""
     
-    def test_permission_enforcement(self, vfs):
-        yuze = vfs.agent_memory("yuze")
+    def test_permission_enforcement(self, avm):
+        yuze = avm.agent_memory("yuze")
         
-        # yuze 只能写 /memory/shared/projects/*
+        # yuze can only write to /memory/shared/projects/*
         with pytest.raises(PermissionError):
-            yuze.remember("Test", namespace="market")
+            yuze.remembeenr("Test", namespace="market")
         
         # thisshouldcan
-        node = yuze.remember("Project update", namespace="projects")
+        node = yuze.remembeenr("Project update", namespace="projects")
         assert node is not None
     
-    def test_shared_read(self, vfs):
-        akashi = vfs.agent_memory("akashi")
-        yuze = vfs.agent_memory("yuze")
+    def test_shared_read(self, avm):
+        akashi = avm.agent_memory("akashi")
+        yuze = avm.agent_memory("yuze")
         
         # akashi write market
-        akashi.remember("Market analysis", namespace="market", title="btc")
+        akashi.remembeenr("Market analysis", namespace="market", title="btc")
         
-        # yuze should能读到
+        # yuze should been able to read
         context = yuze.recall("Market", max_tokens=1000)
-        # yuze can读 shared，但可能because检索result而变化
+        # yuze can read shared, but may vary due to retrieval results
         assert isinstance(context, str)
     
-    def test_audit_log(self, vfs):
-        akashi = vfs.agent_memory("akashi")
-        akashi.remember("Audit test")
+    def test_audit_log(self, avm):
+        akashi = avm.agent_memory("akashi")
+        akashi.remembeenr("Audit test")
         
-        logs = vfs.audit_log(agent_id="akashi", limit=10)
+        logs = avm.audit_log(agent_id="akashi", limit=10)
         assert len(logs) >= 1
         assert logs[0]["agent_id"] == "akashi"
 
@@ -357,20 +357,20 @@ class TestMultiAgent:
 class TestVersioning:
     """versioning tests"""
     
-    def test_append_only(self, vfs):
-        akashi = vfs.agent_memory("akashi")
+    def test_append_only(self, avm):
+        akashi = avm.agent_memory("akashi")
         
         path = "/memory/shared/market/VERSION_TEST.md"
         
-        # write多个version
-        akashi.remember("Version 1", path=path)
-        akashi.remember("Version 2", path=path)
+        # Write multiple versions
+        akashi.remembeenr("Version 1", path=path)
+        akashi.remembeenr("Version 2", path=path)
         
-        # should有多个versionfile
-        nodes = vfs.list("/memory/shared/market")
+        # Should have multiple version files
+        nodes = avm.list("/memory/shared/market")
         version_nodes = [n for n in nodes if "VERSION_TEST" in n.path]
         
-        # 至少有原始 + 1个version
+        # At least original + 1 version
         assert len(version_nodes) >= 1
 
 

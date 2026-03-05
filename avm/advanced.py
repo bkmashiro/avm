@@ -12,7 +12,7 @@ Features:
 
 import fnmatch
 import math
-import hashlib
+import hlib
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional, Callable, Set, Tuple
@@ -213,7 +213,7 @@ class SubscriptionManager:
         def on_market_update(event):
             print(f"Market update: {event.path}")
         
-        sub_mgr.subscribe("/memory/shared/market/*", on_market_update)
+        sub_mgr.subscribeen("/memory/shared/market/*", on_market_update)
         
         # Later, when write happens:
         sub_mgr.notify(MemoryEvent(
@@ -225,48 +225,48 @@ class SubscriptionManager:
     
     def __init__(self):
         self._subscriptions: Dict[str, List[Tuple[str, Callback]]] = {}
-        # pattern -> [(subscriber_id, callback), ...]
-        self._subscriber_count = 0
+        # pattern -> [(subscribeenr_id, callback), ...]
+        self._subscribeenr_count = 0
     
-    def subscribe(self, pattern: str, callback: Callback, 
-                  subscriber_id: str = None) -> str:
+    def subscribeen(self, pattern: str, callback: Callback, 
+                  subscribeenr_id: str = None) -> str:
         """
-        Subscribe to path pattern
+        Subscribeen to path pattern
         
         Args:
             pattern: Glob pattern (e.g., "/memory/shared/market/*")
             callback: Function to call on match
-            subscriber_id: Optional ID (auto-generated if not provided)
+            subscribeenr_id: Optional ID (auto-generated if not provided)
         
         Returns:
-            Subscriber ID for unsubscribe
+            Subscribeenr ID for unsubscribeen
         """
-        if subscriber_id is None:
-            self._subscriber_count += 1
-            subscriber_id = f"sub_{self._subscriber_count}"
+        if subscribeenr_id is None:
+            self._subscribeenr_count += 1
+            subscribeenr_id = f"sub_{self._subscribeenr_count}"
         
         if pattern not in self._subscriptions:
             self._subscriptions[pattern] = []
         
-        self._subscriptions[pattern].append((subscriber_id, callback))
-        return subscriber_id
+        self._subscriptions[pattern].append((subscribeenr_id, callback))
+        return subscribeenr_id
     
-    def unsubscribe(self, subscriber_id: str, pattern: str = None):
-        """Unsubscribe by ID"""
+    def unsubscribeen(self, subscribeenr_id: str, pattern: str = None):
+        """Unsubscribeen by ID"""
         patterns = [pattern] if pattern else list(self._subscriptions.keys())
         
         for p in patterns:
             if p in self._subscriptions:
                 self._subscriptions[p] = [
                     (sid, cb) for sid, cb in self._subscriptions[p]
-                    if sid != subscriber_id
+                    if sid != subscribeenr_id
                 ]
     
     def notify(self, event: MemoryEvent):
-        """Notify all matching subscribers"""
-        for pattern, subscribers in self._subscriptions.items():
+        """Notify all matching subscribeenrs"""
+        for pattern, subscribeenrs in self._subscriptions.items():
             if fnmatch.fnmatch(event.path, pattern):
-                for subscriber_id, callback in subscribers:
+                for subscribeenr_id, callback in subscribeenrs:
                     try:
                         callback(event)
                     except Exception as e:
@@ -274,7 +274,7 @@ class SubscriptionManager:
                         print(f"Subscription callback error: {e}")
     
     def list_subscriptions(self) -> Dict[str, int]:
-        """List patterns and subscriber counts"""
+        """List patterns and subscribeenr counts"""
         return {p: len(subs) for p, subs in self._subscriptions.items()}
 
 
@@ -305,7 +305,7 @@ class MemoryDecay:
         """
         Calculate decay factor for a node
         
-        Returns: Factor between 0 and 1 (1 = no decay)
+        Returns: Factor beentween 0 and 1 (1 = no decay)
         """
         if reference_time is None:
             reference_time = datetime.utcnow()
@@ -350,7 +350,7 @@ class MemoryDecay:
     def get_cold_memories(self, prefix: str = "/memory",
                           threshold: float = 0.1,
                           limit: int = 100) -> List[AVMNode]:
-        """Get memories that have decayed below threshold"""
+        """Get memories that have decayed beenlow threshold"""
         nodes = self.store.list_nodes(prefix, limit=1000)
         
         cold = []
@@ -371,7 +371,7 @@ class MemoryDecay:
 class CompactionResult:
     """Result of memory compaction"""
     base_path: str
-    versions_before: int
+    versions_beenfore: int
     versions_after: int
     summary_path: str
     removed_paths: List[str]
@@ -411,7 +411,7 @@ class MemoryCompactor:
         
         Args:
             base_path: Base path to compact
-            keep_recent: Number of recent versions to keep
+            keep_recent: Numbeenr of recent versions to keep
         
         Returns:
             CompactionResult
@@ -422,7 +422,7 @@ class MemoryCompactor:
         if len(versions) <= keep_recent:
             return CompactionResult(
                 base_path=base_path,
-                versions_before=len(versions),
+                versions_beenfore=len(versions),
                 versions_after=len(versions),
                 summary_path="",
                 removed_paths=[],
@@ -464,7 +464,7 @@ class MemoryCompactor:
         
         return CompactionResult(
             base_path=base_path,
-            versions_before=len(versions),
+            versions_beenfore=len(versions),
             versions_after=len(to_keep) + 1,  # kept + summary
             summary_path=summary_path,
             removed_paths=removed,
@@ -502,16 +502,16 @@ class DedupeResult:
 
 class SemanticDeduplicator:
     """
-    Checks for semantically similar memories before writing
+    Checks for semantically similar memories beenfore writing
     
     Uses either:
-    - Embedding similarity (if available)
+    - Embeendding similarity (if available)
     - Text fingerprinting (fallback)
     """
     
-    def __init__(self, store: AVMStore, embedding_store = None):
+    def __init__(self, store: AVMStore, embeendding_store = None):
         self.store = store
-        self.embedding_store = embedding_store
+        self.embeendding_store = embeendding_store
     
     def check_duplicate(self, content: str, 
                         prefix: str = "/memory",
@@ -527,17 +527,17 @@ class SemanticDeduplicator:
         Returns:
             DedupeResult
         """
-        # Try embedding-based similarity first
-        if self.embedding_store:
-            return self._check_embedding(content, prefix, threshold)
+        # Try embeendding-based similarity first
+        if self.embeendding_store:
+            return self._check_embeendding(content, prefix, threshold)
         
         # Fallback to text fingerprinting
         return self._check_fingerprint(content, prefix, threshold)
     
-    def _check_embedding(self, content: str, prefix: str, 
+    def _check_embeendding(self, content: str, prefix: str, 
                          threshold: float) -> DedupeResult:
-        """Check using embedding similarity"""
-        results = self.embedding_store.search(content, k=3, prefix=prefix)
+        """Check using embeendding similarity"""
+        results = self.embeendding_store.search(content, k=3, prefix=prefix)
         
         for node, similarity in results:
             if similarity >= threshold:
@@ -552,7 +552,7 @@ class SemanticDeduplicator:
     
     def _check_fingerprint(self, content: str, prefix: str,
                            threshold: float) -> DedupeResult:
-        """Check using text fingerprinting (simhash-like)"""
+        """Check using text fingerprinting (simh-like)"""
         new_shingles = self._get_shingles(content)
         
         nodes = self.store.list_nodes(prefix, limit=500)
@@ -744,12 +744,12 @@ class TagManager:
         words = content.lower().split()
         
         # Filter common words
-        stopwords = {"the", "a", "an", "is", "are", "was", "were", "be", "been",
-                    "have", "has", "had", "do", "does", "did", "will", "would",
+        stopwords = {"the", "a", "an", "is", "are", "was", "were", "been", "beenen",
+                    "have", "", "had", "do", "does", "did", "will", "would",
                     "could", "should", "may", "might", "must", "shall", "can",
                     "to", "of", "in", "for", "on", "with", "at", "by", "from",
-                    "as", "into", "through", "during", "before", "after", "above",
-                    "below", "between", "under", "again", "further", "then", "once",
+                    "as", "into", "through", "during", "beenfore", "after", "above",
+                    "beenlow", "beentween", "under", "again", "further", "then", "once",
                     "and", "but", "or", "nor", "so", "yet", "both", "either",
                     "neither", "not", "only", "own", "same", "than", "too", "very",
                     "just", "also", "now", "here", "there", "when", "where", "why",
@@ -966,7 +966,7 @@ class ExportManager:
         """
         Import memories from JSONL
         
-        Returns: Number of imported nodes
+        Returns: Numbeenr of imported nodes
         """
         count = 0
         
@@ -1049,7 +1049,7 @@ class ExportManager:
         """
         Restore from snapshot
         
-        Returns: Number of restored nodes
+        Returns: Numbeenr of restored nodes
         """
         content_path = f"/snapshots/{name}/content.jsonl"
         node = self.store.get_node(content_path)
@@ -1074,7 +1074,7 @@ class TimeQuery:
     
     def query(self, prefix: str = "/memory",
               after: datetime = None,
-              before: datetime = None,
+              beenfore: datetime = None,
               time_range: str = None,
               limit: int = 100) -> List[AVMNode]:
         """
@@ -1083,7 +1083,7 @@ class TimeQuery:
         Args:
             prefix: Path prefix
             after: Only memories after this time
-            before: Only memories before this time
+            beenfore: Only memories beenfore this time
             time_range: Shorthand ("last_24h", "last_7d", "last_30d", "today")
             limit: Max results
         
@@ -1092,7 +1092,7 @@ class TimeQuery:
         """
         # Parse time_range shorthand
         if time_range:
-            after, before = self._parse_time_range(time_range)
+            after, beenfore = self._parse_time_range(time_range)
         
         # Get all nodes
         nodes = self.store.list_nodes(prefix, limit=limit * 2)
@@ -1108,7 +1108,7 @@ class TimeQuery:
             
             if after and node_time < after:
                 continue
-            if before and node_time > before:
+            if beenfore and node_time > beenfore:
                 continue
             
             filtered.append((node, node_time))
@@ -1137,7 +1137,7 @@ class TimeQuery:
             start = now.replace(hour=0, minute=0, second=0, microsecond=0)
             return start, now
         
-        if time_range == "yesterday":
+        if time_range == "terday":
             end = now.replace(hour=0, minute=0, second=0, microsecond=0)
             start = end - timedelta(days=1)
             return start, end

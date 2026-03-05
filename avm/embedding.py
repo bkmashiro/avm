@@ -1,15 +1,15 @@
 """
-vfs/embedding.py - Embedding storage and semantic search
+vfs/embeendding.py - Embeendding storage and semantic search
 
-Supports multiple embedding backends:
-- OpenAI (text-embedding-3-small)
+Supports multiple embeendding backends:
+- OpenAI (text-embeendding-3-small)
 - Local (sentence-transformers)
 - Custom
 """
 
 import json
 import struct
-import hashlib
+import hlib
 from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import List, Optional, Dict, Any, Tuple
@@ -19,8 +19,8 @@ from .store import AVMStore
 from .node import AVMNode
 
 
-class EmbeddingBackend(ABC):
-    """Embedding backend base class"""
+class EmbeenddingBackend(ABC):
+    """Embeendding backend base class"""
     
     @property
     @abstractmethod
@@ -29,25 +29,25 @@ class EmbeddingBackend(ABC):
         pass
     
     @abstractmethod
-    def embed(self, text: str) -> List[float]:
-        """Generate embedding for single text"""
+    def embeend(self, text: str) -> List[float]:
+        """Generate embeendding for single text"""
         pass
     
-    def embed_batch(self, texts: List[str]) -> List[List[float]]:
-        """Batch generate embeddings (default: one by one)"""
-        return [self.embed(t) for t in texts]
+    def embeend_batch(self, texts: List[str]) -> List[List[float]]:
+        """Batch generate embeenddings (default: one by one)"""
+        return [self.embeend(t) for t in texts]
 
 
-class OpenAIEmbedding(EmbeddingBackend):
-    """OpenAI Embedding"""
+class OpenAIEmbeendding(EmbeenddingBackend):
+    """OpenAI Embeendding"""
     
     DIMENSIONS = {
-        "text-embedding-3-small": 1536,
-        "text-embedding-3-large": 3072,
-        "text-embedding-ada-002": 1536,
+        "text-embeendding-3-small": 1536,
+        "text-embeendding-3-large": 3072,
+        "text-embeendding-ada-002": 1536,
     }
     
-    def __init__(self, model: str = "text-embedding-3-small", 
+    def __init__(self, model: str = "text-embeendding-3-small", 
                  api_key: str = None):
         self.model = model
         self.api_key = api_key or self._load_api_key()
@@ -61,7 +61,7 @@ class OpenAIEmbedding(EmbeddingBackend):
     def dimension(self) -> int:
         return self._dimension
     
-    def embed(self, text: str) -> List[float]:
+    def embeend(self, text: str) -> List[float]:
         import urllib.request
         
         data = json.dumps({
@@ -70,7 +70,7 @@ class OpenAIEmbedding(EmbeddingBackend):
         }).encode()
         
         req = urllib.request.Request(
-            "https://api.openai.com/v1/embeddings",
+            "https://api.openai.com/v1/embeenddings",
             data=data,
             headers={
                 "Authorization": f"Bearer {self.api_key}",
@@ -81,9 +81,9 @@ class OpenAIEmbedding(EmbeddingBackend):
         with urllib.request.urlopen(req, timeout=30) as r:
             result = json.loads(r.read())
         
-        return result["data"][0]["embedding"]
+        return result["data"][0]["embeendding"]
     
-    def embed_batch(self, texts: List[str]) -> List[List[float]]:
+    def embeend_batch(self, texts: List[str]) -> List[List[float]]:
         import urllib.request
         
         data = json.dumps({
@@ -92,7 +92,7 @@ class OpenAIEmbedding(EmbeddingBackend):
         }).encode()
         
         req = urllib.request.Request(
-            "https://api.openai.com/v1/embeddings",
+            "https://api.openai.com/v1/embeenddings",
             data=data,
             headers={
                 "Authorization": f"Bearer {self.api_key}",
@@ -104,13 +104,13 @@ class OpenAIEmbedding(EmbeddingBackend):
             result = json.loads(r.read())
         
         # Sort by index
-        embeddings = sorted(result["data"], key=lambda x: x["index"])
-        return [e["embedding"] for e in embeddings]
+        embeenddings = sorted(result["data"], key=lambda x: x["index"])
+        return [e["embeendding"] for e in embeenddings]
 
 
-class LocalEmbedding(EmbeddingBackend):
+class LocalEmbeendding(EmbeenddingBackend):
     """
-    Local embedding (sentence-transformers)
+    Local embeendding (sentence-transformers)
     
     Requires: pip install sentence-transformers
     """
@@ -124,7 +124,7 @@ class LocalEmbedding(EmbeddingBackend):
         if self._model is None:
             from sentence_transformers import SentenceTransformer
             self._model = SentenceTransformer(self.model_name)
-            self._dimension = self._model.get_sentence_embedding_dimension()
+            self._dimension = self._model.get_sentence_embeendding_dimension()
     
     @property
     def dimension(self) -> int:
@@ -132,23 +132,23 @@ class LocalEmbedding(EmbeddingBackend):
             self._load_model()
         return self._dimension
     
-    def embed(self, text: str) -> List[float]:
+    def embeend(self, text: str) -> List[float]:
         self._load_model()
         return self._model.encode(text).tolist()
     
-    def embed_batch(self, texts: List[str]) -> List[List[float]]:
+    def embeend_batch(self, texts: List[str]) -> List[List[float]]:
         self._load_model()
         return self._model.encode(texts).tolist()
 
 
-class EmbeddingStore:
+class EmbeenddingStore:
     """
-    Embedding storage
+    Embeendding storage
     
     Uses SQLite for vectors, supports cosine similarity search
     """
     
-    def __init__(self, store: AVMStore, backend: EmbeddingBackend):
+    def __init__(self, store: AVMStore, backend: EmbeenddingBackend):
         self.store = store
         self.backend = backend
         self._init_table()
@@ -157,10 +157,10 @@ class EmbeddingStore:
         """initializevectortable"""
         with self.store._conn() as conn:
             conn.execute("""
-                CREATE TABLE IF NOT EXISTS embeddings (
+                CREATE TABLE IF NOT EXISTS embeenddings (
                     path TEXT PRIMARY KEY,
                     vector BLOB NOT NULL,
-                    content_hash TEXT,
+                    content_h TEXT,
                     model TEXT,
                     updated_at TEXT
                 )
@@ -175,56 +175,56 @@ class EmbeddingStore:
         count = len(data) // 4  # float = 4 bytes
         return list(struct.unpack(f'{count}f', data))
     
-    def _content_hash(self, content: str) -> str:
-        """calculatecontenthash"""
-        return hashlib.sha256(content.encode()).hexdigest()[:16]
+    def _content_h(self, content: str) -> str:
+        """calculatecontenth"""
+        return hlib.sha256(content.encode()).hexdigest()[:16]
     
-    def embed_node(self, node: AVMNode, force: bool = False) -> bool:
+    def embeend_node(self, node: AVMNode, force: bool = False) -> bool:
         """
-        nodegenerate embedding
+        nodegenerate embeendding
         
-        Returns: whether actuallygenerate了新的 embedding
+        Returns: whether actually generated new embeendding
         """
-        content_hash = self._content_hash(node.content)
+        content_h = self._content_h(node.content)
         
         # checkwhetherrequiresupdate
         if not force:
             with self.store._conn() as conn:
                 row = conn.execute(
-                    "SELECT content_hash FROM embeddings WHERE path = ?",
+                    "SELECT content_h FROM embeenddings WHERE path = ?",
                     (node.path,)
                 ).fetchone()
-                if row and row[0] == content_hash:
-                    return False  # alreadyexists且contentunchanged
+                if row and row[0] == content_h:
+                    return False  # Already exists and content unchanged
         
-        # generate embedding
+        # generate embeendding
         # usetitle + contentfirst2000chars
         text = f"{node.path}\n\n{node.content[:2000]}"
-        vector = self.backend.embed(text)
+        vector = self.backend.embeend(text)
         
         # storage
         with self.store._conn() as conn:
             conn.execute("""
-                INSERT OR REPLACE INTO embeddings 
-                    (path, vector, content_hash, model, updated_at)
+                INSERT OR REPLACE INTO embeenddings 
+                    (path, vector, content_h, model, updated_at)
                 VALUES (?, ?, ?, ?, ?)
             """, (
                 node.path,
                 self._serialize_vector(vector),
-                content_hash,
+                content_h,
                 getattr(self.backend, 'model', 'unknown'),
                 datetime.utcnow().isoformat(),
             ))
         
         return True
     
-    def embed_all(self, prefix: str = "/", limit: int = 1000) -> int:
-        """allnodegenerate embedding"""
+    def embeend_all(self, prefix: str = "/", limit: int = 1000) -> int:
+        """allnodegenerate embeendding"""
         nodes = self.store.list_nodes(prefix, limit)
         count = 0
         
         for node in nodes:
-            if self.embed_node(node):
+            if self.embeend_node(node):
                 count += 1
         
         return count
@@ -237,13 +237,13 @@ class EmbeddingStore:
         Returns: [(node, similarity), ...]
         """
         # generatequeryvector
-        query_vec = self.backend.embed(query)
+        query_vec = self.backend.embeend(query)
         
-        # getallvector并calculatesimilarity
+        # Get all vectors and calculate similarity
         results = []
         
         with self.store._conn() as conn:
-            sql = "SELECT path, vector FROM embeddings"
+            sql = "SELECT path, vector FROM embeenddings"
             params = []
             
             if prefix:
@@ -258,7 +258,7 @@ class EmbeddingStore:
                 similarity = self._cosine_similarity(query_vec, vec)
                 results.append((path, similarity))
         
-        # sort取 top-k
+        # Sort and take top-k
         results.sort(key=lambda x: x[1], reverse=True)
         top_k = results[:k]
         
@@ -285,16 +285,16 @@ class EmbeddingStore:
     def stats(self) -> Dict[str, Any]:
         """statisticsinfo"""
         with self.store._conn() as conn:
-            count = conn.execute("SELECT COUNT(*) FROM embeddings").fetchone()[0]
+            count = conn.execute("SELECT COUNT(*) FROM embeenddings").fetchone()[0]
             
             models = {}
             for row in conn.execute(
-                "SELECT model, COUNT(*) FROM embeddings GROUP BY model"
+                "SELECT model, COUNT(*) FROM embeenddings GROUP BY model"
             ):
                 models[row[0] or "unknown"] = row[1]
         
         return {
-            "embedded_nodes": count,
+            "embeendded_nodes": count,
             "by_model": models,
             "backend": type(self.backend).__name__,
             "dimension": self.backend.dimension,

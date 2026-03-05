@@ -1,7 +1,7 @@
 """
-vfs/refresh.py - autorefresh机制
+avm/refresh.py - Auto-refresh mechanism
 
-scheduledrefreshexpired的 live node
+Scheduled refresh of expired live nodes
 """
 
 import time
@@ -16,16 +16,16 @@ from .node import AVMNode
 
 class RefreshScheduler:
     """
-    refresh调度器
+    Refresh scheduler
     
-    scheduledrefreshexpired的 live node
+    Scheduled refresh of expired live nodes
     """
     
     def __init__(self, store: AVMStore, interval_seconds: int = 60):
         """
         Args:
             store: VFS storage
-            interval_seconds: checkinterval（秒）
+            interval_seconds: Check interval (seconds)
         """
         self.store = store
         self.interval = interval_seconds
@@ -56,7 +56,7 @@ class RefreshScheduler:
         return refreshed
     
     def _run_loop(self):
-        """backgroundrefresh循环"""
+        """Background refresh loop"""
         while not self._stop_event.is_set():
             try:
                 self._refresh_expired()
@@ -66,7 +66,7 @@ class RefreshScheduler:
             self._stop_event.wait(self.interval)
     
     def start(self):
-        """启动backgroundrefresh"""
+        """Start background refresh"""
         if self._thread and self._thread.is_alive():
             return
         
@@ -83,9 +83,9 @@ class RefreshScheduler:
 
 class RefreshManager:
     """
-    refresh管理器
+    Refresh manager
     
-    manualrefreshspecifiedpath或all live node
+    Manual refresh specified path or all live nodes
     """
     
     def __init__(self, store: AVMStore):
@@ -136,7 +136,7 @@ def refresh_all_providers(store: AVMStore) -> Dict[str, int]:
     """
     refreshall provider
     
-    convenientfunction，autoloadallalready知 provider
+    Convenience function, auto-load all known providers
     """
     from .providers import (
         TechnicalIndicatorsProvider,
@@ -146,7 +146,7 @@ def refresh_all_providers(store: AVMStore) -> Dict[str, int]:
     
     manager = RefreshManager(store)
     
-    # registerno需auth的 providers
+    # Register providers that don't need auth
     manager.register_provider("/live/indicators", TechnicalIndicatorsProvider(store))
     manager.register_provider("/live/news", NewsProvider(store))
     manager.register_provider("/live/watchlist", WatchlistProvider(store))

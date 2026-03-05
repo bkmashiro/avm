@@ -1,10 +1,10 @@
 """
-vfs/retrieval.py - 联动retrieve与动态documentbuild
+avm/retrieval.py - Linked retrieval and dynamic document building
 
 features:
-1. semanticsearch (embedding)
+1. semanticsearch (embeendding)
 2. graphextend (relatednode)
-3. 动态document合成
+3. Dynamic document synthesis
 """
 
 from dataclasses import dataclass, field
@@ -14,7 +14,7 @@ from typing import List, Dict, Any, Optional, Set, Tuple
 from .store import AVMStore
 from .node import AVMNode
 from .graph import EdgeType
-from .embedding import EmbeddingStore, EmbeddingBackend
+from .embeendding import EmbeenddingStore, EmbeenddingBackend
 
 
 @dataclass
@@ -39,7 +39,7 @@ class RetrievalResult:
 
 @dataclass
 class SynthesizedDocument:
-    """动态合成的document"""
+    """Dynamically synthesized document"""
     title: str
     content: str
     sections: List[Dict[str, Any]]
@@ -52,19 +52,19 @@ class SynthesizedDocument:
 
 class Retriever:
     """
-    联动retrieve器
+    Linked retriever
     
     supports:
-    - semanticsearch (requires embedding)
+    - semanticsearch (requires embeendding)
     - FTS5 full-textsearch (fallback)
     - graphextend
     - resultfusion
     """
     
     def __init__(self, store: AVMStore, 
-                 embedding_store: EmbeddingStore = None):
+                 embeendding_store: EmbeenddingStore = None):
         self.store = store
-        self.embedding_store = embedding_store
+        self.embeendding_store = embeendding_store
     
     def retrieve(self, query: str,
                  k: int = 5,
@@ -72,13 +72,13 @@ class Retriever:
                  graph_depth: int = 1,
                  prefix: str = None) -> RetrievalResult:
         """
-        联动retrieve
+        Linked retrieval
         
         Args:
-            query: query文本
+            query: Query text
             k: returncount
             expand_graph: whetherextendrelationgraph
-            graph_depth: graphextend深度
+            graph_depth: Graph expansion depth
             prefix: pathprefixfilter
         """
         nodes = []
@@ -86,9 +86,9 @@ class Retriever:
         sources = {}
         seen_paths: Set[str] = set()
         
-        # 1. semanticsearch (ifhas embedding)
-        if self.embedding_store:
-            semantic_results = self.embedding_store.search(query, k=k, prefix=prefix)
+        # 1. semanticsearch (if embeendding)
+        if self.embeendding_store:
+            semantic_results = self.embeendding_store.search(query, k=k, prefix=prefix)
             for node, score in semantic_results:
                 if node.path not in seen_paths:
                     nodes.append(node)
@@ -96,12 +96,12 @@ class Retriever:
                     sources[node.path] = "semantic"
                     seen_paths.add(node.path)
         
-        # 2. FTS5 full-textsearch (supplement或 fallback)
+        # 2. FTS5 full-text search (supplement or fallback)
         fts_results = self.store.search(query, limit=k)
         for node, score in fts_results:
             if node.path not in seen_paths:
                 nodes.append(node)
-                # 归一化 FTS score
+                # Normalize FTS score
                 scores[node.path] = min(1.0, score / 10.0)
                 sources[node.path] = "fts"
                 seen_paths.add(node.path)
@@ -120,7 +120,7 @@ class Retriever:
                     node = self.store.get_node(path)
                     if node:
                         nodes.append(node)
-                        # graphextend的 score decay
+                        # Score decay for graph expansion
                         scores[path] = edge_info["score"] * 0.5
                         sources[path] = "graph"
                         seen_paths.add(path)
@@ -130,12 +130,12 @@ class Retriever:
                             edge_info["type"]
                         ))
         
-        # 4. 按 score sort
+        # 4. Sort by score
         nodes.sort(key=lambda n: scores.get(n.path, 0), reverse=True)
         
         return RetrievalResult(
             query=query,
-            nodes=nodes[:k * 2],  # return更多so that合成
+            nodes=nodes[:k * 2],  # Return more for synthesis
             scores=scores,
             sources=sources,
             graph_edges=graph_edges,
@@ -180,9 +180,9 @@ class Retriever:
 
 class DocumentSynthesizer:
     """
-    动态document合成器
+    Dynamic document synthesizer
     
-    将multiplenode的contentaggregate成一个structure化document
+    Aggregate multiple node contents into a structured document
     """
     
     def __init__(self, store: AVMStore):
@@ -193,13 +193,13 @@ class DocumentSynthesizer:
                    max_sections: int = 5,
                    section_max_chars: int = 500) -> SynthesizedDocument:
         """
-        合成动态document
+        Synthesize dynamic document
         
         Args:
             result: retrieveresult
             title: documenttitle（defaultuse query）
-            max_sections: maxsection数
-            section_max_chars: eachsection的maxcharacter数
+            max_sections: Max section count
+            section_max_chars: Max characters per section
         """
         if not title:
             title = f"{result.query} (auto-generated)"
@@ -207,7 +207,7 @@ class DocumentSynthesizer:
         sections = []
         sources = []
         
-        # 按类别group
+        # Group by category
         categorized = self._categorize_nodes(result.nodes)
         
         for category, nodes in categorized.items():
@@ -232,22 +232,22 @@ class DocumentSynthesizer:
         )
     
     def _categorize_nodes(self, nodes: List[AVMNode]) -> Dict[str, List[AVMNode]]:
-        """按pathprefixcategorynode"""
+        """Categorize node by path prefix"""
         categories = {}
         
         category_names = {
             "/market/indicators": "technical indicators",
             "/market/news": "relatednews",
-            "/market/watchlist": "related标的",
+            "/market/watchlist": "Related assets",
             "/trading/positions": "currentpositions",
             "/memory/lessons": "historyexperience",
-            "/memory": "memory笔记",
+            "/memory": "Memory notes",
             "/research": "researchreport",
             "/live": "live data",
         }
         
         for node in nodes:
-            # 找最长match的prefix
+            # Find longest matching prefix
             matched_prefix = None
             matched_name = "other"
             
@@ -270,11 +270,11 @@ class DocumentSynthesizer:
         """buildsection"""
         items = []
         
-        for node in nodes[:3]:  # each类别at most3个
+        for node in nodes[:3]:  # At most 3 per category
             # extractsummary
             content = node.content
             
-            # tryextract关keyinfo
+            # Try to extract key info
             summary = self._extract_summary(content, max_chars // 3)
             
             items.append({
@@ -352,10 +352,10 @@ class DocumentSynthesizer:
                       retriever: Retriever,
                       k: int = 5) -> str:
         """
-        快速generatequerysummary
+        Quickly generate query summary
         
-        一linecall：
-            synthesizer.quick_summary("NVDA风险analysis", retriever)
+        One-line call：
+            synthesizer.quick_summary("NVDA risk analysis", retriever)
         """
         result = retriever.retrieve(query, k=k, expand_graph=True)
         doc = self.synthesize(result, max_sections=5)

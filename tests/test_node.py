@@ -9,7 +9,7 @@ from avm.node import AVMNode, NodeDiff, NodeType, Permission
 
 
 class TestAVMNode:
-    """AVMNode 基础test"""
+    """AVMNode basic tests"""
     
     def test_create_node(self):
         """createnode"""
@@ -24,7 +24,7 @@ class TestAVMNode:
         assert node.node_type == NodeType.FILE
     
     def test_writable_path(self):
-        """可写path检测"""
+        """Writable path detection"""
         memory_node = AVMNode(path="/memory/test.md")
         assert memory_node.is_writable is True
         
@@ -35,7 +35,7 @@ class TestAVMNode:
         assert live_node.is_writable is False
     
     def test_live_node(self):
-        """Live node检测"""
+        """Live node detection"""
         live_node = AVMNode(
             path="/live/positions.md",
             meta={"ttl_seconds": 60}
@@ -47,17 +47,17 @@ class TestAVMNode:
         assert static_node.is_live is False
         assert static_node.ttl_seconds is None
     
-    def test_content_hash(self):
-        """content哈希"""
+    def test_content_h(self):
+        """Content h"""
         node1 = AVMNode(path="/memory/a.md", content="Hello")
         node2 = AVMNode(path="/memory/b.md", content="Hello")
         node3 = AVMNode(path="/memory/c.md", content="World")
         
-        assert node1.content_hash == node2.content_hash
-        assert node1.content_hash != node3.content_hash
+        assert node1.content_h == node2.content_h
+        assert node1.content_h != node3.content_h
     
     def test_to_dict_from_dict(self):
-        """序column化/反序column化"""
+        """Serialize/deserialize"""
         node = AVMNode(
             path="/memory/test.md",
             content="Content",
@@ -82,8 +82,8 @@ class TestNodeDiff:
         diff = NodeDiff(
             node_path="/memory/test.md",
             version=2,
-            old_hash="abc123",
-            new_hash="def456",
+            old_h="abc123",
+            new_h="def456",
             diff_content="- old\n+ new",
             change_type="update",
         )
@@ -93,12 +93,12 @@ class TestNodeDiff:
         assert diff.change_type == "update"
     
     def test_diff_to_dict(self):
-        """Diff 序column化"""
+        """Diff serialization"""
         diff = NodeDiff(
             node_path="/memory/test.md",
             version=1,
-            old_hash=None,
-            new_hash="abc",
+            old_h=None,
+            new_h="abc",
             diff_content="content",
             change_type="create",
         )

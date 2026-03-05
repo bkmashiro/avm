@@ -13,22 +13,22 @@ from avm.graph import EdgeType
 
 @pytest.fixture
 def store():
-    """create临时data库"""
+    """Create temporary database"""
     with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as f:
         db_path = f.name
     
     s = AVMStore(db_path)
     yield s
     
-    # 清理
+    # Cleanup
     os.unlink(db_path)
 
 
 class TestAVMStore:
-    """AVMStore 基础test"""
+    """AVMStore basic tests"""
     
     def test_put_and_get_node(self, store):
-        """write和readnode"""
+        """Write and read node"""
         node = AVMNode(
             path="/memory/test.md",
             content="# Test\n\nHello world.",
@@ -57,7 +57,7 @@ class TestAVMStore:
         assert loaded.version == 2
     
     def test_readonly_permission(self, store):
-        """只读pathpermission"""
+        """Read-only path permission"""
         node = AVMNode(path="/research/test.md", content="data")
         
         with pytest.raises(PermissionError):
@@ -75,8 +75,8 @@ class TestAVMStore:
         assert loaded is None
     
     def test_delete_readonly(self, store):
-        """cannotdelete只读node"""
-        # 通过内部methodcreate只读node
+        """Cannot delete read-only node"""
+        # Create read-only node via internal method
         node = AVMNode(path="/research/test.md", content="data")
         store._put_node_internal(node)
         
@@ -84,7 +84,7 @@ class TestAVMStore:
             store.delete_node("/research/test.md")
     
     def test_list_nodes(self, store):
-        """column出node"""
+        """List nodes"""
         store.put_node(AVMNode(path="/memory/a.md", content="a"))
         store.put_node(AVMNode(path="/memory/b.md", content="b"))
         store.put_node(AVMNode(path="/memory/sub/c.md", content="c"))
@@ -97,13 +97,13 @@ class TestAVMStore:
 
 
 class TestFTS:
-    """全文searchtest"""
+    """Full-text search tests"""
     
     def test_search(self, store):
-        """基础search"""
+        """Basic search"""
         store.put_node(AVMNode(
             path="/memory/lesson1.md",
-            content="RSI below 30 is oversold signal"
+            content="RSI beenlow 30 is oversold signal"
         ))
         store.put_node(AVMNode(
             path="/memory/lesson2.md",
@@ -117,7 +117,7 @@ class TestFTS:
         assert "/memory/lesson1.md" in paths
     
     def test_search_ranking(self, store):
-        """search排名"""
+        """Search ranking"""
         store.put_node(AVMNode(
             path="/memory/a.md",
             content="RSI RSI RSI multiple mentions"
@@ -128,12 +128,12 @@ class TestFTS:
         ))
         
         results = store.search("RSI")
-        # 多次出现的should排名更高
+        # Multiple occurrences should rank higher
         assert len(results) >= 2
 
 
 class TestEdges:
-    """关系图test"""
+    """Graph tests"""
     
     def test_add_edge(self, store):
         """addedge"""
@@ -147,7 +147,7 @@ class TestEdges:
         assert edge.target == "/research/MSFT.md"
     
     def test_get_links(self, store):
-        """get链接"""
+        """Get links"""
         store.add_edge("/a", "/b", EdgeType.PEER)
         store.add_edge("/a", "/c", EdgeType.PARENT)
         store.add_edge("/d", "/a", EdgeType.CITATION)
@@ -162,7 +162,7 @@ class TestEdges:
         assert len(in_links) == 1
     
     def test_load_graph(self, store):
-        """load完整图"""
+        """Load complete graph"""
         store.add_edge("/a", "/b")
         store.add_edge("/b", "/c")
         store.add_edge("/c", "/a")
@@ -174,10 +174,10 @@ class TestEdges:
 
 
 class TestHistory:
-    """变更历史test"""
+    """Change history tests"""
     
     def test_diff_on_update(self, store):
-        """update时save diff"""
+        """Save diff on update"""
         node = AVMNode(path="/memory/test.md", content="version 1")
         store.put_node(node)
         
@@ -190,7 +190,7 @@ class TestHistory:
         assert history[1].version == 1
     
     def test_diff_change_type(self, store):
-        """记录变更type"""
+        """Record change type"""
         node = AVMNode(path="/memory/test.md", content="data")
         store.put_node(node)
         

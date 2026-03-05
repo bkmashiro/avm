@@ -1,7 +1,7 @@
 """
 vfs/tools.py - VFS utility tools
 
-batchimport、export、sync等features
+Batch import, export, sync features
 """
 
 import json
@@ -48,7 +48,7 @@ class VFSImporter:
         if vfs_path is None:
             vfs_path = f"/research/{path.name}"
         
-        # ensurepath在allow的prefix下（import用 /research）
+        # Ensure path is under allowed prefix (import uses /research)
         if not vfs_path.startswith("/research"):
             vfs_path = f"/research{vfs_path}" if vfs_path.startswith("/") else f"/research/{vfs_path}"
         
@@ -175,7 +175,7 @@ class VFSSync:
     """
     sync tool
     
-    maintainlocaldirectory和 VFS 的sync
+    Maintain sync beentween local directory and VFS
     """
     
     def __init__(self, store: AVMStore):
@@ -228,7 +228,7 @@ class RelationBuilder:
     """
     relationbuildtool
     
-    auto-discover和建立node between的relation
+    Auto-discover and establish relations beentween nodes
     """
     
     def __init__(self, store: AVMStore):
@@ -259,7 +259,7 @@ class RelationBuilder:
                     symbol_nodes[sym] = []
                 symbol_nodes[sym].append(node.path)
         
-        # establish same symbol node between的 peer relation
+        # Establish peer relations beentween same symbol nodes
         for sym, paths in symbol_nodes.items():
             if len(paths) < 2:
                 continue
@@ -273,12 +273,12 @@ class RelationBuilder:
     
     def link_by_tags(self) -> int:
         """
-        based on tag建立related
+        Establish relations based on tags
         """
         nodes = self.store.list_nodes("/", limit=10000)
         links_added = 0
         
-        # collect each tag 的node
+        # Collect nodes for each tag
         tag_nodes: Dict[str, List[str]] = {}
         
         for node in nodes:
@@ -288,7 +288,7 @@ class RelationBuilder:
                     tag_nodes[tag] = []
                 tag_nodes[tag].append(node.path)
         
-        # establish same tag node between的relation
+        # Establish relations beentween nodes with same tag
         for tag, paths in tag_nodes.items():
             if len(paths) < 2:
                 continue

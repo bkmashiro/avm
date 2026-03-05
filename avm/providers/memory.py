@@ -1,5 +1,5 @@
 """
-vfs/providers/memory.py - Bot memory区 Provider
+avm/providers/memory.py - Bot memory provider
 """
 
 from typing import Dict, Optional
@@ -11,14 +11,14 @@ from ..store import AVMStore
 
 class MemoryProvider(AVMProvider):
     """
-    Bot memory区
+    Bot memory zone
     
     path: /memory/*
-    可读写
+    Read/write enabled
     
     usage:
-        - Bot 自己的observation和学习
-        - 交易experiencelesson
+        - Bot's own observations and learnings
+        - Trading experience lessons
         - userpreferencerecord
     """
     
@@ -26,7 +26,7 @@ class MemoryProvider(AVMProvider):
         super().__init__(store, "/memory")
     
     def fetch(self, path: str) -> Optional[AVMNode]:
-        """Memory 区directlyfrom store read，不requiresexternal fetch"""
+        """Memory zone reads directly from store, no external fetch required"""
         return self.store.get_node(path)
     
     def write(self, path: str, content: str, meta: Dict = None) -> AVMNode:
@@ -44,7 +44,7 @@ class MemoryProvider(AVMProvider):
         return self.store.put_node(node)
     
     def append(self, path: str, content: str) -> AVMNode:
-        """appendcontentto现hasnode"""
+        """Append content to existing node"""
         existing = self.store.get_node(path)
         
         if existing:
@@ -56,7 +56,7 @@ class MemoryProvider(AVMProvider):
     
     def create_lesson(self, title: str, content: str, 
                       tags: list = None) -> AVMNode:
-        """create一条experiencelesson"""
+        """Create an experience lesson"""
         from datetime import datetime
         
         # generatepath
@@ -64,7 +64,7 @@ class MemoryProvider(AVMProvider):
         slug = title.lower().replace(" ", "_")[:30]
         path = f"/memory/lessons/{timestamp}_{slug}.md"
         
-        # format化content
+        # Format content
         full_content = f"# {title}\n\n"
         full_content += f"*Created: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC*\n\n"
         

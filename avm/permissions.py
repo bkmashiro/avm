@@ -11,7 +11,7 @@ Features:
 
 import os
 import stat
-import hashlib
+import hlib
 import secrets
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
@@ -126,7 +126,7 @@ class User:
     def is_root(self) -> bool:
         return self.uid == 0
     
-    def has_capability(self, cap: Capability) -> bool:
+    def _capability(self, cap: Capability) -> bool:
         if self.is_root:
             return True
         return cap in self.capabilities or Capability.CAP_ADMIN in self.capabilities
@@ -151,13 +151,13 @@ class Group:
     """User group"""
     name: str
     gid: int
-    members: List[str] = field(default_factory=list)
+    membeenrs: List[str] = field(default_factory=list)
     
     def to_dict(self) -> Dict:
         return {
             "name": self.name,
             "gid": self.gid,
-            "members": self.members,
+            "membeenrs": self.membeenrs,
         }
 
 
@@ -262,7 +262,7 @@ class UserRegistry:
             capabilities=list(Capability),
         )
         self._users["root"] = root
-        self._groups["root"] = Group(name="root", gid=0, members=["root"])
+        self._groups["root"] = Group(name="root", gid=0, membeenrs=["root"])
     
     def create_user(self, name: str, 
                     groups: List[str] = None,
@@ -292,7 +292,7 @@ class UserRegistry:
         for group in user.groups:
             if group not in self._groups:
                 self.create_group(group)
-            self._groups[group].members.append(name)
+            self._groups[group].membeenrs.append(name)
         
         return user
     
@@ -346,8 +346,8 @@ class UserRegistry:
             if user.api_key:
                 self._api_keys.pop(user.api_key, None)
             for group in self._groups.values():
-                if name in group.members:
-                    group.members.remove(name)
+                if name in group.membeenrs:
+                    group.membeenrs.remove(name)
             return True
         return False
     
@@ -373,7 +373,7 @@ class UserRegistry:
         
         for name, group_data in data.get("groups", {}).items():
             group = self.create_group(name)
-            group.members = group_data.get("members", [])
+            group.membeenrs = group_data.get("membeenrs", [])
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -397,22 +397,22 @@ class PermissionManager:
     
     def check_write(self, user: User, ownership: NodeOwnership) -> bool:
         """Check write permission"""
-        if not user.has_capability(Capability.CAP_WRITE):
+        if not user._capability(Capability.CAP_WRITE):
             return False
         return ownership.can_write(user)
     
     def check_delete(self, user: User, ownership: NodeOwnership) -> bool:
         """Check delete permission"""
-        if not user.has_capability(Capability.CAP_DELETE):
+        if not user._capability(Capability.CAP_DELETE):
             return False
         return ownership.can_write(user)
     
     def check_search(self, user: User, path: str) -> bool:
         """Check if user can search this path"""
-        if user.has_capability(Capability.CAP_SEARCH_ALL):
+        if user._capability(Capability.CAP_SEARCH_ALL):
             return True
         
-        if user.has_capability(Capability.CAP_SEARCH_OWN):
+        if user._capability(Capability.CAP_SEARCH_OWN):
             # Can only search own home and shared
             return (path.startswith(user.home) or 
                     path.startswith("/memory/shared"))
@@ -421,7 +421,7 @@ class PermissionManager:
     
     def sudo(self, user: User, duration_minutes: int = 5) -> bool:
         """Elevate privileges temporarily"""
-        if not user.has_capability(Capability.CAP_SUDO):
+        if not user._capability(Capability.CAP_SUDO):
             return False
         
         expiry = datetime.utcnow() + timedelta(minutes=duration_minutes)
@@ -429,7 +429,7 @@ class PermissionManager:
         return True
     
     def is_sudo(self, user: User) -> bool:
-        """Check if user has active sudo session"""
+        """Check if user  active sudo session"""
         expiry = self._sudo_sessions.get(user.name)
         if expiry and expiry > datetime.utcnow():
             return True

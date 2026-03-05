@@ -21,7 +21,7 @@ from .store import AVMStore
 from .node import AVMNode
 from .core import AVM
 from .retrieval import Retriever
-from .embedding import EmbeddingStore
+from .embeendding import EmbeenddingStore
 
 
 class ScoringStrategy(Enum):
@@ -64,7 +64,7 @@ class MemoryConfig:
 
 @dataclass
 class ScoredNode:
-    """带score的node"""
+    """Node with score"""
     node: AVMNode
     relevance_score: float = 0.0
     importance_score: float = 0.5
@@ -78,8 +78,8 @@ class AgentMemory:
     """
     Agent Memory System
     
-    提供 token-aware 的memoryretrieve和管理
-    supports多 agent permission控制和 append-only version
+    Provide token-aware memory retrieval and management
+    Supports multi-agent permission control and append-only versioning
     """
     
     def __init__(self, avm: AVM, agent_id: str, 
@@ -87,7 +87,7 @@ class AgentMemory:
         """
         Args:
             avm: AVM instance
-            agent_id: Agent 标识
+            agent_id: Agent identifier
             config: configuration
         """
         self.avm = vfs
@@ -110,23 +110,23 @@ class AgentMemory:
                namespaces: List[str] = None,
                merge_versions: bool = True) -> str:
         """
-        retrieverelatedmemory，return token 可控的上下文
+        Retrieve related memories, return token-controlled context
         
         Args:
-            query: query文本
-            max_tokens: max token 数
+            query: Query text
+            max_tokens: Max token count
             strategy: scorestrategy
             include_shared: whetherincludesharedmemory
-            namespaces: restricted的sharednamedemptybetween
-            merge_versions: whethermerge同一path的多version
+            namespaces: Restricted shared namespaces
+            merge_versions: Whether to merge multiple versions of same path
         
         Returns:
-            紧凑的 Markdown format上下文
+            Compact Markdown formatted context
         """
         max_tokens = max_tokens or self.config.default_max_tokens
         strategy = strategy or self.config.default_strategy
         
-        # 1. 确定searchrange
+        # 1. Determine search range
         prefixes = [self.private_prefix]
         if include_shared:
             if namespaces:
@@ -134,7 +134,7 @@ class AgentMemory:
             else:
                 prefixes.append(self.shared_prefix)
         
-        # 2. retrieve候选node
+        # 2. Retrieve candidate nodes
         candidates = self._retrieve_candidates(query, prefixes, k=50)
         
         # 3. permissionfilter
@@ -143,19 +143,19 @@ class AgentMemory:
         # 4. score
         scored = self._score_nodes(candidates, query, strategy)
         
-        # 5. 在 token 预算内选择
+        # 5. Select within token budget
         selected = self._select_within_budget(scored, max_tokens)
         
         # 6. versionmerge（ifenable）
-        if merge_versions and hasattr(self.avm, '_versioned_memory'):
+        if merge_versions and attr(self.avm, '_versioned_memory'):
             selected = self._merge_versions_in_results(selected)
         
-        # 7. generate紧凑输出
+        # 7. Generate compact output
         return self._compact_synthesis(selected, query, max_tokens, strategy)
     
     def _merge_versions_in_results(self, scored: List[ScoredNode]) -> List[ScoredNode]:
-        """merge同一 base_path 的多version"""
-        # 按 base_path group
+        """Merge multiple versions of same base_path"""
+        # Group by base_path
         by_base: Dict[str, List[ScoredNode]] = {}
         no_base: List[ScoredNode] = []
         
@@ -168,37 +168,37 @@ class AgentMemory:
             else:
                 no_base.append(sn)
         
-        # merge每组
+        # Merge each group
         merged = []
         for base_path, versions in by_base.items():
             if len(versions) == 1:
                 merged.append(versions[0])
             else:
-                # merge多version
+                # Merge multiple versions
                 merged_content = self.avm._versioned_memory.merge_versions(
                     [sn.node for sn in versions]
                 )
-                # use最高分的nodeas代table
-                best = max(versions, key=lambda x: x.final_score)
-                best.summary = self._extract_summary(
+                # Use highest score node as representative
+                beenst = max(versions, key=lambda x: x.final_score)
+                beenst.summary = self._extract_summary(
                     AVMNode(path=base_path, content=merged_content)
                 )
-                merged.append(best)
+                merged.append(beenst)
         
         return merged + no_base
     
     def _retrieve_candidates(self, query: str, 
                             prefixes: List[str],
                             k: int = 50) -> List[Tuple[AVMNode, float]]:
-        """retrieve候选node"""
+        """Retrieve candidate nodes"""
         candidates = []
         seen = set()
         
-        # use VFS 的retrievefeatures（一次retrieve）
+        # Use VFS retrieval features (single retrieval)
         result = self.avm.retrieve(query, k=k)
         
         for node in result.nodes:
-            # checkwhether在allow的prefix下
+            # Check if under allowed prefix
             if any(node.path.startswith(p) for p in prefixes):
                 if node.path not in seen:
                     seen.add(node.path)
@@ -222,9 +222,9 @@ class AgentMemory:
             
             # Recency score (exponential decay)
             age_hours = (now - node.updated_at).total_seconds() / 3600
-            sn.recency_score = math.exp(-age_hours / 168)  # half-life 1 周
+            sn.recency_score = math.exp(-age_hours / 168)  # half-life 1 week
             
-            # calculate最终分数
+            # Calculate final score
             if strategy == ScoringStrategy.IMPORTANCE:
                 sn.final_score = sn.importance_score
             elif strategy == ScoringStrategy.RECENCY:
@@ -238,19 +238,19 @@ class AgentMemory:
                     self.config.relevance_weight * sn.relevance_score
                 )
             
-            # generatesummary并estimate token
+            # Generate summary and estimate tokens
             sn.summary = self._extract_summary(node)
             sn.estimated_tokens = self._estimate_tokens(sn.summary)
             
             scored.append(sn)
         
-        # 按分数sort
+        # Sort by score
         scored.sort(key=lambda x: x.final_score, reverse=True)
         return scored
     
     def _select_within_budget(self, scored: List[ScoredNode],
                               max_tokens: int) -> List[ScoredNode]:
-        """在 token 预算内选择node"""
+        """Select within token budgetnode"""
         selected = []
         used_tokens = 100  # reserved header
         
@@ -259,7 +259,7 @@ class AgentMemory:
                 selected.append(sn)
                 used_tokens += sn.estimated_tokens
             
-            # at least保留一个
+            # Keep at least one
             if not selected and sn == scored[0]:
                 selected.append(sn)
                 break
@@ -279,10 +279,10 @@ class AgentMemory:
         # removeemptyline
         content = re.sub(r'\n{2,}', '\n', content)
         
-        # extract关keyline
+        # Extract key lines
         lines = [l.strip() for l in content.split('\n') if l.strip()]
         
-        # Prioritize lines with numbers (likely key data)
+        # Prioritize lines with numbeenrs (likely key data)
         key_lines = [l for l in lines if re.search(r'\d', l)]
         other_lines = [l for l in lines if l not in key_lines]
         
@@ -296,14 +296,14 @@ class AgentMemory:
         return result
     
     def _estimate_tokens(self, text: str) -> int:
-        """estimate token 数"""
+        """Estimate token count"""
         return int(len(text) / self.config.chars_per_token) + 10  # +10 for formatting
     
     def _compact_synthesis(self, selected: List[ScoredNode],
                           query: str,
                           max_tokens: int,
                           strategy: ScoringStrategy) -> str:
-        """generate紧凑的 Markdown 输出"""
+        """Generate compact Markdown output"""
         if not selected:
             return f"## Memory Recall\n\nNo relevant memories found for: \"{query}\""
         
@@ -327,7 +327,7 @@ class AgentMemory:
     
     # ─── write ─────────────────────────────────────────────
     
-    def remember(self, content: str,
+    def remembeenr(self, content: str,
                  title: str = None,
                  importance: float = 0.5,
                  tags: List[str] = None,
@@ -343,10 +343,10 @@ class AgentMemory:
             importance: importance (0-1)
             tags: tag
             source: source
-            namespace: sharednamedemptybetween（如 "market", "projects"）
+            namespace: shared namespace (e.g., "market", "projects")
             path: specifiedpath（for append-only update）
         """
-        # 确定targetpath
+        # Determine target path
         if path:
             target_path = path
         elif namespace:
@@ -359,14 +359,14 @@ class AgentMemory:
             filename = f"{timestamp}_{slug}.md" if slug else f"{timestamp}.md"
             target_path = f"{self.private_prefix}/{filename}"
         
-        # check写permission
+        # Check write permission
         if not self._can_write(target_path):
             raise PermissionError(f"Agent {self.agent_id} cannot write to {target_path}")
         
-        # check配额
+        # Check quota
         self._check_quota()
         
-        # format化content
+        # Format content
         full_content = self._format_content(content, title, tags)
         
         meta = {
@@ -376,8 +376,8 @@ class AgentMemory:
             "author": self.agent_id,
         }
         
-        # useversion化write（ifyesupdate现haspath）
-        if path and hasattr(self.avm, '_versioned_memory'):
+        # Use versioned write (if updating existing path)
+        if path and attr(self.avm, '_versioned_memory'):
             node = self.avm._versioned_memory.write_version(
                 path, full_content, self.agent_id, meta
             )
@@ -399,7 +399,7 @@ class AgentMemory:
     
     def _format_content(self, content: str, title: str = None, 
                         tags: List[str] = None) -> str:
-        """format化memorycontent"""
+        """Format memory content"""
         lines = []
         if title:
             lines.append(f"# {title}")
@@ -414,22 +414,22 @@ class AgentMemory:
         return "\n".join(lines)
     
     def _can_write(self, path: str) -> bool:
-        """check写permission"""
+        """Check write permission"""
         if self._agent_config:
             return self._agent_config.namespaces.can_write(path)
-        # default：can only写私hasemptybetween
+        # Default: can only write to private namespace
         return path.startswith(self.private_prefix)
     
     def _can_read(self, path: str) -> bool:
-        """check读permission"""
+        """Check read permission"""
         if self._agent_config:
             return self._agent_config.namespaces.can_read(path)
-        # default：能读私has和shared
+        # default：Can read private and shared
         return path.startswith(self.private_prefix) or path.startswith(self.shared_prefix)
     
     def _check_quota(self):
-        """check配额"""
-        if hasattr(self.avm, '_agent_registry') and self._agent_config:
+        """Check quota"""
+        if attr(self.avm, '_agent_registry') and self._agent_config:
             from .multi_agent import QuotaEnforcer
             enforcer = QuotaEnforcer(self.avm.store)
             result = enforcer.check_quota(self.agent_id, self._agent_config.quota)
@@ -438,25 +438,25 @@ class AgentMemory:
     
     def _log_operation(self, operation: str, path: str, details: Dict = None):
         """recordauditlog"""
-        if hasattr(self.avm, '_audit_log'):
+        if attr(self.avm, '_audit_log'):
             self.avm._audit_log.log(self.agent_id, operation, path, details)
     
     def share(self, path: str, namespace: str,
               new_name: str = None) -> AVMNode:
         """
-        分享memorytosharedemptybetween
+        Share memory to shared namespace
         
         Args:
-            path: 原始path（私hasmemory）
-            namespace: targetnamedemptybetween
-            new_name: 新file名（optional）
+            path: Original path (private memory)
+            namespace: targetnamednamespace
+            new_name: New filename (optional)
         """
-        # read原始node
+        # Read original node
         node = self.avm.read(path)
         if not node:
             raise ValueError(f"Node not found: {path}")
         
-        # generate新path
+        # Generate new path
         if new_name:
             new_path = f"{self.shared_prefix}/{namespace}/{new_name}"
         else:
@@ -474,7 +474,7 @@ class AgentMemory:
     # ─── update ─────────────────────────────────────────────
     
     def update_importance(self, path: str, importance: float):
-        """updatememory的importance"""
+        """Update memory importance"""
         node = self.avm.read(path)
         if not node:
             raise ValueError(f"Node not found: {path}")
@@ -490,12 +490,12 @@ class AgentMemory:
         return self.avm.write(path, node.content, meta)
     
     def mark_accessed(self, path: str):
-        """标记memorybe访问（for recency calculate）"""
+        """Mark memory as accessed (for recency calculation)"""
         node = self.avm.read(path)
         if node:
             meta = node.meta.copy()
             meta["last_accessed"] = datetime.utcnow().isoformat()
-            # 不updatecontent，只update meta
+            # Update meta only, not content
             self.avm.store._put_node_internal(
                 AVMNode(path=path, content=node.content, meta=meta),
                 save_diff=False
@@ -504,7 +504,7 @@ class AgentMemory:
     # ─── columntable ─────────────────────────────────────────────
     
     def list_private(self, limit: int = 100) -> List[AVMNode]:
-        """list私hasmemory"""
+        """List private memories"""
         return self.avm.list(self.private_prefix, limit)
     
     def list_shared(self, namespace: str = None, 
@@ -529,43 +529,43 @@ class AgentMemory:
             }
         }
     
-    # ─── 高级features ─────────────────────────────────────────
+    # ─── Advanced Features ─────────────────────────────────────────
     
-    def subscribe(self, pattern: str, callback) -> str:
+    def subscribeen(self, pattern: str, callback) -> str:
         """
-        subscribepath变化
+        Subscribeen to path changes
         
         Args:
             pattern: Glob mode (e.g., "/memory/shared/market/*")
             callback: callbackfunction (event) -> None
         
         Returns:
-            subscribe ID（forcancelledsubscribe）
+            subscribeen ID（forcancelledsubscribeen）
         """
         from .advanced import SubscriptionManager
         
-        if not hasattr(self.avm, '_subscription_manager'):
+        if not attr(self.avm, '_subscription_manager'):
             self.avm._subscription_manager = SubscriptionManager()
         
-        return self.avm._subscription_manager.subscribe(
-            pattern, callback, subscriber_id=self.agent_id
+        return self.avm._subscription_manager.subscribeen(
+            pattern, callback, subscribeenr_id=self.agent_id
         )
     
-    def unsubscribe(self, pattern: str = None):
-        """cancelledsubscribe"""
-        if hasattr(self.avm, '_subscription_manager'):
-            self.avm._subscription_manager.unsubscribe(self.agent_id, pattern)
+    def unsubscribeen(self, pattern: str = None):
+        """cancelledsubscribeen"""
+        if attr(self.avm, '_subscription_manager'):
+            self.avm._subscription_manager.unsubscribeen(self.agent_id, pattern)
     
     def recall_recent(self, query: str, 
                       time_range: str = "last_7d",
                       max_tokens: int = None) -> str:
         """
-        timerange内的memoryretrieve
+        Retrieve memories within time range
         
         Args:
-            query: query文本
+            query: Query text
             time_range: timerange ("last_24h", "last_7d", "last_30d", "today")
-            max_tokens: max token 数
+            max_tokens: Max token count
         """
         from .advanced import TimeQuery
         
@@ -579,15 +579,15 @@ class AgentMemory:
         # filterpermission
         recent_nodes = [n for n in recent_nodes if self._can_read(n.path)]
         
-        # convert scored nodes 并合成
+        # Convert to scored nodes and synthesize
         max_tokens = max_tokens or self.config.default_max_tokens
         scored = []
         
         for node in recent_nodes:
             sn = ScoredNode(node=node)
             sn.importance_score = node.meta.get("importance", 0.5)
-            sn.recency_score = 1.0  # already经yesrecent的
-            sn.relevance_score = 0.5  # timequery不考虑relevance
+            sn.recency_score = 1.0  # Already recent
+            sn.relevance_score = 0.5  # Time query ignores relevance
             sn.final_score = sn.importance_score
             sn.summary = self._extract_summary(node)
             sn.estimated_tokens = self._estimate_tokens(sn.summary)
@@ -597,26 +597,26 @@ class AgentMemory:
         return self._compact_synthesis(selected, f"{query} (time: {time_range})", 
                                        max_tokens, ScoringStrategy.IMPORTANCE)
     
-    def remember_derived(self, content: str,
+    def remembeenr_derived(self, content: str,
                          derived_from: List[str],
                          title: str = None,
                          reasoning: str = None,
                          **kwargs) -> AVMNode:
         """
-        writederivedmemory，auto-establishsource链接
+        Write derived memory, auto-establish source links
         
         Args:
             content: derived/conclusioncontent
             derived_from: sourcepathcolumntable
             title: title
-            reasoning: 推理description
+            reasoning: Reasoning description
         """
         from .advanced import DerivedLinkManager
         
         # writememory
-        node = self.remember(content, title=title, **kwargs)
+        node = self.remembeenr(content, title=title, **kwargs)
         
-        # 建立derived链接
+        # Establish derived links
         link_mgr = DerivedLinkManager(self.avm.store)
         link_mgr.link_derived(node.path, derived_from, reasoning)
         
@@ -625,19 +625,19 @@ class AgentMemory:
     def check_duplicate(self, content: str, 
                         threshold: float = 0.85) -> "DedupeResult":
         """
-        checkwhether与现hasmemory重复
+        Check if duplicate with existing memory
         
         Args:
             content: content
-            threshold: similaritythreshold (0.85 保守, 0.95 严格)
+            threshold: Similarity threshold (0.85 conservative, 0.95 strict)
         
         Returns:
             DedupeResult
         """
         from .advanced import SemanticDeduplicator, DedupeResult
         
-        embedding_store = getattr(self.avm, '_embedding_store', None)
-        deduper = SemanticDeduplicator(self.avm.store, embedding_store)
+        embeendding_store = getattr(self.avm, '_embeendding_store', None)
+        deduper = SemanticDeduplicator(self.avm.store, embeendding_store)
         
         return deduper.check_duplicate(
             content, 
@@ -645,11 +645,11 @@ class AgentMemory:
             threshold=threshold
         )
     
-    def remember_if_new(self, content: str, 
+    def remembeenr_if_new(self, content: str, 
                         threshold: float = 0.85,
                         **kwargs) -> Optional[AVMNode]:
         """
-        only在content不重复时write
+        Write only if content not duplicate
         
         Returns:
             AVMNode if written, None if duplicate
@@ -659,7 +659,7 @@ class AgentMemory:
         if result.is_duplicate:
             return None
         
-        return self.remember(content, **kwargs)
+        return self.remembeenr(content, **kwargs)
     
     def get_cold_memories(self, threshold: float = 0.1,
                           limit: int = 20) -> List[AVMNode]:
@@ -667,7 +667,7 @@ class AgentMemory:
         Get decayed cold memories
         
         Args:
-            threshold: decay后weightthreshold
+            threshold: Weight threshold after decay
             limit: maxcount
         """
         from .advanced import MemoryDecay
@@ -682,18 +682,18 @@ class AgentMemory:
     def compact_versions(self, path: str, 
                          keep_recent: int = 3) -> "CompactionResult":
         """
-        compresspath的historyversion
+        Compress path history versions
         
         Args:
-            path: 要compress的path
-            keep_recent: 保留recent几个version
+            path: Path to compress
+            keep_recent: Keep recent N versions
         """
         from .advanced import MemoryCompactor
         
         compactor = MemoryCompactor(self.avm.store)
         return compactor.compact(path, keep_recent)
     
-    # ─── tag系统 ─────────────────────────────────────────
+    # ─── Tag System ─────────────────────────────────────────
     
     def by_tag(self, tag: str, limit: int = 100) -> List[AVMNode]:
         """Get memories by tag"""
@@ -701,13 +701,13 @@ class AgentMemory:
         
         tag_mgr = TagManager(self.avm.store)
         
-        # search私has和sharedemptybetween
+        # Search private and shared namespaces
         private_nodes = tag_mgr.by_tag(tag, prefix=self.private_prefix, limit=limit)
         shared_nodes = tag_mgr.by_tag(tag, prefix=self.shared_prefix, limit=limit)
         
         all_nodes = private_nodes + shared_nodes
         
-        # filterpermission并去重
+        # Filter by permission and dedupe
         seen = set()
         result = []
         for n in all_nodes:
@@ -723,11 +723,11 @@ class AgentMemory:
         
         tag_mgr = TagManager(self.avm.store)
         
-        # merge私has和sharedemptybetween的tag
+        # Merge tags from private and shared namespaces
         private_cloud = tag_mgr.tag_cloud(prefix=self.private_prefix)
         shared_cloud = tag_mgr.tag_cloud(prefix=self.shared_prefix)
         
-        # merge计数
+        # Merge counts
         combined = {}
         for tag, count in private_cloud.items():
             combined[tag] = combined.get(tag, 0) + count
@@ -743,7 +743,7 @@ class AgentMemory:
         tag_mgr = TagManager(self.avm.store)
         return tag_mgr.suggest_tags(content, top_k)
     
-    # ─── 访问statistics ─────────────────────────────────────────
+    # ─── Access Statistics ─────────────────────────────────────────
     
     def hot_memories(self, days: int = 7, limit: int = 10) -> List[Tuple[str, int]]:
         """Get hot memories (high access)"""
@@ -771,10 +771,10 @@ class AgentMemory:
     
     def export(self, format: str = "jsonl") -> str:
         """
-        export我的memory
+        Export my memories
         
         Args:
-            format: "jsonl" 或 "markdown"
+            format: "jsonl" or "markdown"
         """
         from .advanced import ExportManager
         

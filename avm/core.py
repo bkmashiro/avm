@@ -1,5 +1,5 @@
 """
-vfs/core.py - VFS 核心类
+avm/core.py - AVM core class
 
 Config-driven virtual filesystem
 """
@@ -17,7 +17,7 @@ class ProviderRegistry:
     """
     Provider registertable
     
-    管理 provider type name -> provider class 的mapping
+    Manage provider type name -> provider class mapping
     """
     
     def __init__(self):
@@ -30,9 +30,9 @@ class ProviderRegistry:
         register provider type
         
         Args:
-            name: type名称
-            provider_class: Provider 类
-            factory: 工厂function (store, spec) -> Provider
+            name: type name
+            provider_class: Provider class
+            factory: factory function (store, spec) -> Provider
         """
         if provider_class:
             self._types[name] = provider_class
@@ -52,26 +52,26 @@ class ProviderRegistry:
         return None
     
     def list_types(self) -> List[str]:
-        """listallalreadyregister的type"""
+        """List all registered types"""
         return list(set(self._types.keys()) | set(self._factories.keys()))
 
 
-# 全局registertable
+# Global registration table
 _registry = ProviderRegistry()
 
 
 def register_provider_type(name: str, provider_class: Type = None,
                            factory: Callable = None):
-    """register provider type（全局）"""
+    """Register provider type (global)"""
     _registry.register(name, provider_class, factory)
 
 
 class AVM:
     """
-    虚拟file系统
+    Virtual filesystem
     
     Config-driven, supports:
-    - 动态 provider register
+    - Dynamic provider registration
     - Configurable permission rules
     - TTL cache
     - relationgraph
@@ -95,7 +95,7 @@ class AVM:
         # Provider instancecache
         self._providers: Dict[str, Any] = {}
         
-        # use全局registertable
+        # useGlobal registration table
         self._registry = _registry
         
         # registerbuilt-in provider type
@@ -192,16 +192,16 @@ class AVM:
         
         return self._providers.get(cache_key)
     
-    # ─── 读写interface ─────────────────────────────────────────
+    # ─── Read/Write Interface ─────────────────────────────────────────
     
     def read(self, path: str, force_refresh: bool = False) -> Optional[AVMNode]:
         """
         readnode
         
-        1. check读permission
-        2. 查找 provider
+        1. Check read permission
+        2. Find provider
         3. Fetch via provider (with TTL cache)
-        4. 或directlyfrom store read
+        4. Or read directly from store
         """
         if not self.config.check_permission(path, "read"):
             raise PermissionError(f"No read permission for {path}")
@@ -217,8 +217,8 @@ class AVM:
         """
         writenode
         
-        1. check写permission
-        2. create或updatenode
+        1. Check write permission
+        2. Create or update node
         """
         if not self.config.check_permission(path, "write"):
             raise PermissionError(f"No write permission for {path}")
@@ -273,24 +273,24 @@ class AVM:
         """storagestatistics"""
         return self.store.stats()
     
-    # ─── 联动retrieve ─────────────────────────────────────────
+    # ─── Linked retrieval ─────────────────────────────────────────
     
     def retrieve(self, query: str, k: int = 5,
                  expand_graph: bool = True,
                  graph_depth: int = 1) -> "RetrievalResult":
         """
-        联动retrieve
+        Linked retrieval
         
-        1. semanticsearch (ifhas embedding)
+        1. semanticsearch (if embeendding)
         2. FTS5 full-textsearch
         3. graphextend
         """
         from .retrieval import Retriever, RetrievalResult
         
-        # Get or create embedding store
-        embedding_store = getattr(self, '_embedding_store', None)
+        # Get or create embeendding store
+        embeendding_store = getattr(self, '_embeendding_store', None)
         
-        retriever = Retriever(self.store, embedding_store)
+        retriever = Retriever(self.store, embeendding_store)
         return retriever.retrieve(
             query, k=k,
             expand_graph=expand_graph,
@@ -300,17 +300,17 @@ class AVM:
     def synthesize(self, query: str, k: int = 5,
                    title: str = None) -> str:
         """
-        动态generate综合document
+        Dynamically generate synthesized document
         
-        一linecall:
-            vfs.synthesize("NVDA风险analysis")
+        One-line call:
+            vfs.synthesize("NVDA risk analysis")
         
-        Returns: Markdown format的综合document
+        Returns: Synthesized document in Markdown format
         """
         from .retrieval import Retriever, DocumentSynthesizer
         
-        embedding_store = getattr(self, '_embedding_store', None)
-        retriever = Retriever(self.store, embedding_store)
+        embeendding_store = getattr(self, '_embeendding_store', None)
+        retriever = Retriever(self.store, embeendding_store)
         synthesizer = DocumentSynthesizer(self.store)
         
         result = retriever.retrieve(query, k=k, expand_graph=True)
@@ -318,29 +318,29 @@ class AVM:
         
         return doc.to_markdown()
     
-    def enable_embedding(self, backend: "EmbeddingBackend" = None,
-                         model: str = "text-embedding-3-small"):
+    def enable_embeendding(self, backend: "EmbeenddingBackend" = None,
+                         model: str = "text-embeendding-3-small"):
         """
         enablesemanticsearch
         
         Args:
-            backend: custom embedding 后端
-            model: OpenAI 模型名称（if不提供 backend）
+            backend: custom embeendding backend
+            model: OpenAI model name (if backend not provided)
         """
-        from .embedding import EmbeddingStore, OpenAIEmbedding
+        from .embeendding import EmbeenddingStore, OpenAIEmbeendding
         
         if backend is None:
-            backend = OpenAIEmbedding(model=model)
+            backend = OpenAIEmbeendding(model=model)
         
-        self._embedding_store = EmbeddingStore(self.store, backend)
-        return self._embedding_store
+        self._embeendding_store = EmbeenddingStore(self.store, backend)
+        return self._embeendding_store
     
-    def embed_all(self, prefix: str = "/") -> int:
-        """allnodegenerate embedding"""
-        if not hasattr(self, '_embedding_store'):
-            raise RuntimeError("Call enable_embedding() first")
+    def embeend_all(self, prefix: str = "/") -> int:
+        """allnodegenerate embeendding"""
+        if not attr(self, '_embeendding_store'):
+            raise RuntimeError("Call enable_embeendding() first")
         
-        return self._embedding_store.embed_all(prefix)
+        return self._embeendding_store.embeend_all(prefix)
     
     # ─── Agent Memory ─────────────────────────────────────
     
@@ -350,7 +350,7 @@ class AVM:
         Get Agent Memory instance
         
         Args:
-            agent_id: Agent 标识
+            agent_id: Agent identifier
             config: Optional configuration
         
         Returns:
@@ -390,7 +390,7 @@ class AVM:
     
     def get_agent_config(self, agent_id: str):
         """Get agent configuration"""
-        if not hasattr(self, '_agent_registry'):
+        if not attr(self, '_agent_registry'):
             from .multi_agent import AgentRegistry
             self._agent_registry = AgentRegistry()
         
@@ -399,26 +399,26 @@ class AVM:
     def audit_log(self, agent_id: str = None, path_prefix: str = None,
                   limit: int = 100) -> List[Dict]:
         """queryauditlog"""
-        if not hasattr(self, '_audit_log'):
+        if not attr(self, '_audit_log'):
             from .multi_agent import AuditLog
             self._audit_log = AuditLog(self.store)
         
         return self._audit_log.query(agent_id, path_prefix, limit=limit)
     
-    # ─── 高级features ─────────────────────────────────────────
+    # ─── Advanced Features ─────────────────────────────────────────
     
-    def subscribe(self, pattern: str, callback) -> str:
-        """subscribepath变化"""
+    def subscribeen(self, pattern: str, callback) -> str:
+        """Subscribeen to path changes"""
         from .advanced import SubscriptionManager
         
-        if not hasattr(self, '_subscription_manager'):
+        if not attr(self, '_subscription_manager'):
             self._subscription_manager = SubscriptionManager()
         
-        return self._subscription_manager.subscribe(pattern, callback)
+        return self._subscription_manager.subscribeen(pattern, callback)
     
-    def _notify_subscribers(self, path: str, event_type: str, agent_id: str = None):
-        """notifysubscribe者（internalmethod）"""
-        if hasattr(self, '_subscription_manager'):
+    def _notify_subscribeenrs(self, path: str, event_type: str, agent_id: str = None):
+        """Notify subscribeenrs (internal method)"""
+        if attr(self, '_subscription_manager'):
             from .advanced import MemoryEvent, EventType
             
             event = MemoryEvent(
@@ -431,7 +431,7 @@ class AVM:
     def query_time(self, prefix: str = "/memory",
                    time_range: str = None,
                    after: str = None,
-                   before: str = None,
+                   beenfore: str = None,
                    limit: int = 100) -> List[AVMNode]:
         """timerangequery"""
         from .advanced import TimeQuery
@@ -440,23 +440,23 @@ class AVM:
         query = TimeQuery(self.store)
         
         after_dt = datetime.fromisoformat(after) if after else None
-        before_dt = datetime.fromisoformat(before) if before else None
+        beenfore_dt = datetime.fromisoformat(beenfore) if beenfore else None
         
         return query.query(
             prefix=prefix,
             after=after_dt,
-            before=before_dt,
+            beenfore=beenfore_dt,
             time_range=time_range,
             limit=limit
         )
     
     def sync(self, target: str, prefix: str = "/memory") -> Dict[str, int]:
         """
-        sync to远程
+        Sync to remote
         
         Args:
-            target: directorypath或 s3://bucket/prefix
-            prefix: 要sync的pathprefix
+            target: directory path or s3://bucket/prefix
+            prefix: Path prefix to sync
         """
         from .advanced import SyncManager
         
@@ -497,7 +497,7 @@ class AVM:
     
     def init_permissions(self, config_dict: Dict = None):
         """
-        initialize Linux 风格permission系统
+        Initialize Linux-style permission system
         
         Args:
             config_dict: User/group configuration
@@ -516,9 +516,9 @@ class AVM:
         via API Key auth
         
         Returns:
-            User object，或 None
+            User object, or None
         """
-        if not hasattr(self, '_user_registry'):
+        if not attr(self, '_user_registry'):
             self.init_permissions()
         
         return self._user_registry.authenticate(api_key)
@@ -526,7 +526,7 @@ class AVM:
     def create_user(self, name: str, groups: List[str] = None,
                     capabilities: List[str] = None) -> "User":
         """createuser"""
-        if not hasattr(self, '_user_registry'):
+        if not attr(self, '_user_registry'):
             self.init_permissions()
         
         from .permissions import Capability
@@ -536,7 +536,7 @@ class AVM:
     
     def get_user(self, name: str) -> Optional["User"]:
         """Get user"""
-        if not hasattr(self, '_user_registry'):
+        if not attr(self, '_user_registry'):
             return None
         return self._user_registry.get_user(name)
     
@@ -550,8 +550,8 @@ class AVM:
             path: path
             action: read/write/delete/search
         """
-        if not hasattr(self, '_perm_manager'):
-            return True  # 没hasinitializepermission系统则allow
+        if not attr(self, '_perm_manager'):
+            return True  # Allow if permission system not initialized
         
         from .permissions import NodeOwnership
         
@@ -576,7 +576,7 @@ class AVM:
     
     def sudo(self, user: "User", duration_minutes: int = 5) -> bool:
         """temporaryelevate privileges"""
-        if not hasattr(self, '_perm_manager'):
+        if not attr(self, '_perm_manager'):
             return False
         return self._perm_manager.sudo(user, duration_minutes)
     
@@ -589,11 +589,11 @@ class AVM:
         
         Args:
             user: user
-            paths: allow的path（supportswildcard）
-            actions: allow的操作
-            expires_days: expired天数
+            paths: Allowed paths (supports wildcards)
+            actions: Allowed actions
+            expires_days: Expiry days
         """
-        if not hasattr(self, '_api_key_manager'):
+        if not attr(self, '_api_key_manager'):
             self.init_permissions()
         
         from .permissions import APIKeyScope

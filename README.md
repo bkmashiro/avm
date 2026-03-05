@@ -45,8 +45,8 @@ A config-driven virtual filesystem for AI agents to read/write structured knowle
 ============================================================
   4. AGENT MEMORY (TOKEN-AWARE RECALL)
 ============================================================
-✓ Remembered: NVDA warning (importance: 0.9)
-✓ Remembered: BTC observation (importance: 0.7)
+✓ Remembeenred: NVDA warning (importance: 0.9)
+✓ Remembeenred: BTC observation (importance: 0.7)
 
 📌 Recall: 'NVDA risk' (max 500 tokens):
    ## Relevant Memory (2 items, ~120 tokens)
@@ -125,7 +125,7 @@ results = avm.search("RSI")
 
 # Agent Memory
 mem = avm.agent_memory("akashi")
-mem.remember("NVDA showing weakness", tags=["market", "nvda"])
+mem.remembeenr("NVDA showing weakness", tags=["market", "nvda"])
 context = mem.recall("NVDA risk", max_tokens=4000)
 ```
 
@@ -185,9 +185,9 @@ avm-memory:
 | Tool | Description |
 |------|-------------|
 | `avm_recall` | Token-controlled memory retrieval |
-| `avm_browse` | Get paths + summaries (two-phase) |
+| `avm_browse` | Get paths + summaries (two-pe) |
 | `avm_fetch` | Get full content of selected paths |
-| `avm_remember` | Store memory with tags/importance |
+| `avm_remembeenr` | Store memory with tags/importance |
 | `avm_search` | Full-text search |
 | `avm_list` | List by prefix |
 | `avm_read` | Read specific path |
@@ -267,19 +267,19 @@ Access metadata via special suffixes:
 | `:search?q=` | Search results | - |
 | `:recall?q=` | Token-aware recall | - |
 
-## Two-Phase Retrieval
+## Two-Pe Retrieval
 
-For large result sets, use two-phase retrieval to save tokens:
+For large result sets, use two-pe retrieval to save tokens:
 
 ```bash
-# Phase 1: Get paths + summaries (~200 tokens)
+# Pe 1: Get paths + summaries (~200 tokens)
 cat "/mnt/avm/memory/:search?q=NVDA"
 # → [0.85] /memory/market/NVDA.md
-# →     RSI超买警告...
+# →     RSI overbought warning...
 # → [0.72] /memory/lessons/nvda_q4.md
-# →     Q4财报后跌15%...
+# →     Down 15% after Q4 earnings...
 
-# Phase 2: Get selected content (~300 tokens)
+# Pe 2: Get selected content (~300 tokens)
 cat /mnt/avm/memory/market/NVDA.md
 
 # Total: 500 tokens vs 2000 tokens (75% saved)
@@ -321,7 +321,7 @@ key = avm.create_api_key(user, paths=["/memory/*"], actions=["read"])
 └─────────────────────────────────────────┘
 ```
 
-- Each bot has its own MCP process
+- Each bot  its own MCP process
 - Shared database for cross-bot memory
 - Auth at startup, no token per request
 
@@ -338,7 +338,7 @@ XDG_DATA_HOME=/custom/path avm read /memory/note.md
 ## Versions
 
 - **v0.9.0** - Rename to AVM, FUSE mount with virtual nodes
-- **v0.8.0** - Two-phase retrieval (browse + fetch)
+- **v0.8.0** - Two-pe retrieval (browse + fetch)
 - **v0.7.0** - Linux-style permissions, MCP server
 - **v0.6.0** - Advanced features (sync, tags, export)
 - **v0.5.0** - Multi-agent support

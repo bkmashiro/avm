@@ -61,24 +61,24 @@ class AlpacaPositionsProvider(AVMProvider):
             positions = _alpaca_get(f"{base}/v2/positions", key, secret)
 
             pos_lines = '\n'.join(
-                f"- **{p['symbol']}** {p['qty']}股 "
+                f"- **{p['symbol']}** {p['qty']} shares "
                 f"@ ${float(p['avg_entry_price']):.2f} | "
-                f"市value ${float(p['market_value']):,.2f} | "
-                f"盈亏 ${float(p['unrealized_pl']):,.2f} "
+                f"Market value ${float(p['market_value']):,.2f} | "
+                f"P&L ${float(p['unrealized_pl']):,.2f} "
                 f"({float(p['unrealized_plpc'])*100:.1f}%)"
                 for p in positions
-            ) or '_null仓_'
+            ) or '_No positions_'
 
             now_utc = datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')
-            content = f"""# current持仓
+            content = f"""# Current Positions
 
-**总资产**: ${float(acc['equity']):,.2f}
-**现金**: ${float(acc['cash']):,.2f}
-**当日盈亏**: ${float(acc.get('equity', 0)) - float(acc.get('last_equity', acc.get('equity', 0))):,.2f}
-**买入力**: ${float(acc.get('buying_power', 0)):,.2f}
+**Total Equity**: ${float(acc['equity']):,.2f}
+**Cash**: ${float(acc['cash']):,.2f}
+**Today P&L**: ${float(acc.get('equity', 0)) - float(acc.get('last_equity', acc.get('equity', 0))):,.2f}
+**Buying Power**: ${float(acc.get('buying_power', 0)):,.2f}
 **updated_at**: {now_utc}
 
-## 持仓明细
+## Position Details
 
 {pos_lines}
 """
@@ -92,14 +92,14 @@ class AlpacaPositionsProvider(AVMProvider):
         except FileNotFoundError as e:
             return AVMNode(
                 path=path,
-                content=f'# 持仓\n\n⚠️ {e}\n\n请create `~/.openclaw/workspace/trading/.env`',
+                content=f'# Positions\n\n⚠️ {e}\n\nPlease create `~/.openclaw/workspace/trading/.env`',
                 sources=['alpaca_api'],
                 confidence=0.0,
             )
         except Exception as e:
             return AVMNode(
                 path=path,
-                content=f'# 持仓\n\n❌ Alpaca API error: {e}',
+                content=f'# Positions\n\n❌ Alpaca API error: {e}',
                 sources=['alpaca_api'],
                 confidence=0.0,
             )
@@ -126,16 +126,16 @@ class AlpacaAccountProvider(AVMProvider):
             acc = _alpaca_get(f"{base}/v2/account", key, secret)
             now_utc = datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')
 
-            content = f"""# 账户摘要
+            content = f"""# Account Summary
 
 | field | value |
 |------|-----|
-| 总资产 | ${float(acc['equity']):,.2f} |
-| combine价value | ${float(acc.get('portfolio_value', acc['equity'])):,.2f} |
-| 现金 | ${float(acc['cash']):,.2f} |
-| 买入力（日内） | ${float(acc.get('daytrading_buying_power', 0)):,.2f} |
-| 买入力（隔夜） | ${float(acc.get('regt_buying_power', 0)):,.2f} |
-| 状态 | {acc.get('status', 'unknown')} |
+| Total Equity | ${float(acc['equity']):,.2f} |
+| Portfolio Value | ${float(acc.get('portfolio_value', acc['equity'])):,.2f} |
+| Cash | ${float(acc['cash']):,.2f} |
+| Buying Power(Day) | ${float(acc.get('daytrading_buying_power', 0)):,.2f} |
+| Buying Power(Overnight) | ${float(acc.get('regt_buying_power', 0)):,.2f} |
+| Status | {acc.get('status', 'unknown')} |
 | updated_at | {now_utc} |
 """
             return AVMNode(
@@ -148,7 +148,7 @@ class AlpacaAccountProvider(AVMProvider):
         except Exception as e:
             return AVMNode(
                 path=path,
-                content=f'# 账户\n\n❌ {e}',
+                content=f'# Account\n\n❌ {e}',
                 sources=['alpaca_api'],
                 confidence=0.0,
             )
@@ -173,7 +173,7 @@ class ResearchProvider(AVMProvider):
         file_path = self.reports_dir / filename
 
         if not file_path.exists():
-            # Return a stub so callers know the path exists but has no data
+            # Return a stub so callers know the path exists but  no data
             ticker = filename.replace('.md', '').upper()
             return AVMNode(
                 path=path,

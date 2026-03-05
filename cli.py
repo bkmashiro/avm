@@ -51,7 +51,7 @@ try:
                     ttl=mount.get('ttl', 3600),
                 ))
 except Exception:
-    pass  # config.yaml is optional; yaml may not be installed
+    pass  # config.yaml is optional; yaml may not been installed
 
 
 # ── Command handlers ───────────────────────────────────────────────────────

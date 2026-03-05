@@ -78,7 +78,7 @@ class LiveProvider(AVMProvider):
     Live data provider
     
     Features:
-    - Data has TTL
+    - Data  TTL
     - Auto-refresh expired data on read
     """
     
@@ -260,7 +260,7 @@ class AlpacaPositionsProvider(LiveProvider):
             return self._make_node(
                 f"/live/positions/{symbol}.md",
                 f"# {symbol}\n\nNo position found.",
-                {"symbol": symbol, "has_position": False}
+                {"symbol": symbol, "_position": False}
             )
         
         lines = [
@@ -281,7 +281,7 @@ class AlpacaPositionsProvider(LiveProvider):
             "\n".join(lines),
             {
                 "symbol": symbol,
-                "has_position": True,
+                "_position": True,
                 "qty": int(pos["qty"]),
                 "market_value": float(pos["market_value"]),
             }
