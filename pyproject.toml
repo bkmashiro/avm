@@ -28,6 +28,7 @@ dev = ["pytest", "pytest-cov"]
 
 [project.scripts]
 vfs = "vfs.cli:main"
+vfs-mcp = "vfs.mcp_server:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["vfs"]
