@@ -288,9 +288,9 @@ trader.remember(
     
     context = trader.recall("NVDA", max_tokens=500)
     
-    # Escape brackets for Rich markup
-    context_escaped = context.replace("[", "\\[").replace("]", "\\]")
-    show_result("Recall Result (max 500 tokens)", context_escaped, "green")
+    # Use Text object to avoid markup parsing
+    from rich.text import Text
+    console.print(Panel(Text(context), title="[bold]Recall Result (max 500 tokens)[/bold]", border_style="green"))
     
     pause()
     
