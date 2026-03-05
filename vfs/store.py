@@ -2,6 +2,7 @@
 vfs/store.py - SQLite storage layer (with FTS5 full-text search)
 """
 
+import os
 import sqlite3
 import json
 from datetime import datetime
