@@ -363,3 +363,44 @@ class VFS:
             mem_config = MemoryConfig.from_dict(config)
         
         return AgentMemory(self, agent_id, mem_config)
+    
+    # ─── Multi-Agent ─────────────────────────────────────
+    
+    def load_agents(self, config_path: str = None, config_dict: Dict = None):
+        """
+        加载多 agent 配置
+        
+        Args:
+            config_path: YAML 配置文件路径
+            config_dict: 配置字典
+        """
+        from .multi_agent import AgentRegistry, AuditLog, VersionedMemory
+        
+        self._agent_registry = AgentRegistry()
+        self._audit_log = AuditLog(self.store)
+        self._versioned_memory = VersionedMemory(self.store)
+        
+        if config_path:
+            import yaml
+            with open(config_path) as f:
+                config_dict = yaml.safe_load(f)
+        
+        if config_dict:
+            self._agent_registry.load_from_dict(config_dict)
+    
+    def get_agent_config(self, agent_id: str):
+        """获取 agent 配置"""
+        if not hasattr(self, '_agent_registry'):
+            from .multi_agent import AgentRegistry
+            self._agent_registry = AgentRegistry()
+        
+        return self._agent_registry.get(agent_id)
+    
+    def audit_log(self, agent_id: str = None, path_prefix: str = None,
+                  limit: int = 100) -> List[Dict]:
+        """查询审计日志"""
+        if not hasattr(self, '_audit_log'):
+            from .multi_agent import AuditLog
+            self._audit_log = AuditLog(self.store)
+        
+        return self._audit_log.query(agent_id, path_prefix, limit=limit)

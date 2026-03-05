@@ -15,6 +15,7 @@ class EdgeType(Enum):
     CITATION = "citation"   # 引用关系（如：研报引用）
     DERIVED = "derived"     # 派生关系（如：信号来源于指标）
     RELATED = "related"     # 一般关联
+    VERSION_OF = "version_of"  # 版本关系（append-only memory）
 
 
 @dataclass

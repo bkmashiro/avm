@@ -5,7 +5,7 @@ AI Virtual Filesystem (VFS)
 配置驱动，支持自定义 provider 和权限规则。
 """
 
-__version__ = "0.4.0"
+__version__ = "0.5.0"
 
 from .node import VFSNode
 from .graph import KVGraph
@@ -13,6 +13,10 @@ from .store import VFSStore
 from .config import VFSConfig, ProviderSpec, PermissionRule, load_config
 from .core import VFS, register_provider_type
 from .retrieval import Retriever, DocumentSynthesizer, RetrievalResult
+from .multi_agent import (
+    AgentConfig, AgentRegistry, AgentRole, AgentQuota,
+    NamespacePermissions, AuditLog, VersionedMemory, QuotaEnforcer
+)
 
 __all__ = [
     # Core
@@ -30,4 +34,13 @@ __all__ = [
     "Retriever",
     "DocumentSynthesizer",
     "RetrievalResult",
+    # Multi-Agent
+    "AgentConfig",
+    "AgentRegistry",
+    "AgentRole",
+    "AgentQuota",
+    "NamespacePermissions",
+    "AuditLog",
+    "VersionedMemory",
+    "QuotaEnforcer",
 ]

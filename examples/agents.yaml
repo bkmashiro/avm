@@ -1,0 +1,72 @@
+# Multi-Agent Configuration Example
+# 
+# This defines agent roles, quotas, and namespace permissions.
+# Use with: vfs = VFS(); vfs.load_agents("agents.yaml")
+
+agents:
+  # Admin agent - full access
+  akashi:
+    role: admin
+    quota:
+      max_nodes: 10000
+      max_total_mb: 100
+    namespaces:
+      read: ["*"]
+      write: 
+        - "/memory/private/akashi/*"
+        - "/memory/shared/*"
+
+  # Secretary agent - broad read, limited write
+  yuze:
+    role: member
+    quota:
+      max_nodes: 5000
+      max_total_mb: 50
+    namespaces:
+      read:
+        - "/memory/private/yuze/*"
+        - "/memory/shared/*"
+      write:
+        - "/memory/private/yuze/*"
+        - "/memory/shared/secretary/*"
+        - "/memory/shared/projects/*"
+
+  # Specialized agent - market analysis
+  trader:
+    role: member
+    quota:
+      max_nodes: 3000
+      max_total_mb: 30
+    namespaces:
+      read:
+        - "/memory/private/trader/*"
+        - "/memory/shared/market/*"
+        - "/memory/shared/company/*"
+      write:
+        - "/memory/private/trader/*"
+        - "/memory/shared/market/*"
+
+  # Read-only agent
+  viewer:
+    role: readonly
+    quota:
+      max_nodes: 100
+      max_total_mb: 10
+    namespaces:
+      read:
+        - "/memory/shared/*"
+      write: []
+
+  # Agent with inheritance
+  laffey:
+    inherit: yuze  # Inherits yuze's config as base
+    quota:
+      max_nodes: 2000  # Override quota
+
+# Shared namespace descriptions (documentation only)
+# /memory/shared/
+#   market/     - Market analysis, signals (trader writes)
+#   company/    - Company info, roster (read-only)
+#   projects/   - Project updates (all members write)
+#   events/     - Broadcast events (all members write)
+#   secretary/  - Secretary notes (yuze writes)

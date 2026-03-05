@@ -6,6 +6,8 @@ Token-aware memory retrieval with:
 - Importance/recency/relevance scoring
 - Token budget control
 - Compact synthesis
+- Multi-agent support with permissions
+- Append-only versioning
 """
 
 import re
@@ -77,6 +79,7 @@ class AgentMemory:
     Agent Memory System
     
     提供 token-aware 的记忆检索和管理
+    支持多 agent 权限控制和 append-only 版本
     """
     
     def __init__(self, vfs: VFS, agent_id: str, 
@@ -94,6 +97,9 @@ class AgentMemory:
         # 路径前缀
         self.private_prefix = f"/memory/private/{agent_id}"
         self.shared_prefix = "/memory/shared"
+        
+        # 获取 agent 配置（权限、配额）
+        self._agent_config = vfs.get_agent_config(agent_id)
     
     # ─── 检索 ─────────────────────────────────────────────
     
@@ -101,7 +107,8 @@ class AgentMemory:
                max_tokens: int = None,
                strategy: ScoringStrategy = None,
                include_shared: bool = True,
-               namespaces: List[str] = None) -> str:
+               namespaces: List[str] = None,
+               merge_versions: bool = True) -> str:
         """
         检索相关记忆，返回 token 可控的上下文
         
@@ -111,6 +118,7 @@ class AgentMemory:
             strategy: 评分策略
             include_shared: 是否包含共享记忆
             namespaces: 限定的共享命名空间
+            merge_versions: 是否合并同一路径的多版本
         
         Returns:
             紧凑的 Markdown 格式上下文
@@ -129,14 +137,55 @@ class AgentMemory:
         # 2. 检索候选节点
         candidates = self._retrieve_candidates(query, prefixes, k=50)
         
-        # 3. 评分
+        # 3. 权限过滤
+        candidates = [(n, s) for n, s in candidates if self._can_read(n.path)]
+        
+        # 4. 评分
         scored = self._score_nodes(candidates, query, strategy)
         
-        # 4. 在 token 预算内选择
+        # 5. 在 token 预算内选择
         selected = self._select_within_budget(scored, max_tokens)
         
-        # 5. 生成紧凑输出
+        # 6. 版本合并（如果启用）
+        if merge_versions and hasattr(self.vfs, '_versioned_memory'):
+            selected = self._merge_versions_in_results(selected)
+        
+        # 7. 生成紧凑输出
         return self._compact_synthesis(selected, query, max_tokens, strategy)
+    
+    def _merge_versions_in_results(self, scored: List[ScoredNode]) -> List[ScoredNode]:
+        """合并同一 base_path 的多版本"""
+        # 按 base_path 分组
+        by_base: Dict[str, List[ScoredNode]] = {}
+        no_base: List[ScoredNode] = []
+        
+        for sn in scored:
+            base = sn.node.meta.get("base_path")
+            if base:
+                if base not in by_base:
+                    by_base[base] = []
+                by_base[base].append(sn)
+            else:
+                no_base.append(sn)
+        
+        # 合并每组
+        merged = []
+        for base_path, versions in by_base.items():
+            if len(versions) == 1:
+                merged.append(versions[0])
+            else:
+                # 合并多版本
+                merged_content = self.vfs._versioned_memory.merge_versions(
+                    [sn.node for sn in versions]
+                )
+                # 使用最高分的节点作为代表
+                best = max(versions, key=lambda x: x.final_score)
+                best.summary = self._extract_summary(
+                    VFSNode(path=base_path, content=merged_content)
+                )
+                merged.append(best)
+        
+        return merged + no_base
     
     def _retrieve_candidates(self, query: str, 
                             prefixes: List[str],
@@ -282,9 +331,11 @@ class AgentMemory:
                  title: str = None,
                  importance: float = 0.5,
                  tags: List[str] = None,
-                 source: str = "agent") -> VFSNode:
+                 source: str = "agent",
+                 namespace: str = None,
+                 path: str = None) -> VFSNode:
         """
-        写入私有记忆
+        写入记忆（支持 append-only 版本）
         
         Args:
             content: 记忆内容
@@ -292,36 +343,103 @@ class AgentMemory:
             importance: 重要性 (0-1)
             tags: 标签
             source: 来源
+            namespace: 共享命名空间（如 "market", "projects"）
+            path: 指定路径（用于 append-only 更新）
         """
-        timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
-        
-        if title:
-            slug = re.sub(r'[^\w\s-]', '', title.lower())
-            slug = re.sub(r'[\s_]+', '_', slug)[:30]
-            filename = f"{timestamp}_{slug}.md"
+        # 确定目标路径
+        if path:
+            target_path = path
+        elif namespace:
+            timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+            slug = self._make_slug(title) if title else timestamp
+            target_path = f"{self.shared_prefix}/{namespace}/{slug}.md"
         else:
-            filename = f"{timestamp}.md"
+            timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+            slug = self._make_slug(title) if title else ""
+            filename = f"{timestamp}_{slug}.md" if slug else f"{timestamp}.md"
+            target_path = f"{self.private_prefix}/{filename}"
         
-        path = f"{self.private_prefix}/{filename}"
+        # 检查写权限
+        if not self._can_write(target_path):
+            raise PermissionError(f"Agent {self.agent_id} cannot write to {target_path}")
+        
+        # 检查配额
+        self._check_quota()
         
         # 格式化内容
-        full_content = ""
-        if title:
-            full_content += f"# {title}\n\n"
-        full_content += f"*Created: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC*\n"
-        if tags:
-            full_content += f"*Tags: {', '.join(tags)}*\n"
-        full_content += "\n---\n\n"
-        full_content += content
+        full_content = self._format_content(content, title, tags)
         
         meta = {
             "importance": importance,
             "tags": tags or [],
             "source": source,
-            "agent": self.agent_id,
+            "author": self.agent_id,
         }
         
-        return self.vfs.write(path, full_content, meta)
+        # 使用版本化写入（如果是更新现有路径）
+        if path and hasattr(self.vfs, '_versioned_memory'):
+            node = self.vfs._versioned_memory.write_version(
+                path, full_content, self.agent_id, meta
+            )
+        else:
+            node = self.vfs.write(target_path, full_content, meta)
+        
+        # 记录审计日志
+        self._log_operation("write", node.path)
+        
+        return node
+    
+    def _make_slug(self, title: str) -> str:
+        """生成 URL-safe slug"""
+        if not title:
+            return ""
+        slug = re.sub(r'[^\w\s-]', '', title.lower())
+        slug = re.sub(r'[\s_]+', '_', slug)
+        return slug[:30]
+    
+    def _format_content(self, content: str, title: str = None, 
+                        tags: List[str] = None) -> str:
+        """格式化记忆内容"""
+        lines = []
+        if title:
+            lines.append(f"# {title}")
+            lines.append("")
+        lines.append(f"*Created: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC*")
+        if tags:
+            lines.append(f"*Tags: {', '.join(tags)}*")
+        lines.append("")
+        lines.append("---")
+        lines.append("")
+        lines.append(content)
+        return "\n".join(lines)
+    
+    def _can_write(self, path: str) -> bool:
+        """检查写权限"""
+        if self._agent_config:
+            return self._agent_config.namespaces.can_write(path)
+        # 默认：只能写私有空间
+        return path.startswith(self.private_prefix)
+    
+    def _can_read(self, path: str) -> bool:
+        """检查读权限"""
+        if self._agent_config:
+            return self._agent_config.namespaces.can_read(path)
+        # 默认：能读私有和共享
+        return path.startswith(self.private_prefix) or path.startswith(self.shared_prefix)
+    
+    def _check_quota(self):
+        """检查配额"""
+        if hasattr(self.vfs, '_agent_registry') and self._agent_config:
+            from .multi_agent import QuotaEnforcer
+            enforcer = QuotaEnforcer(self.vfs.store)
+            result = enforcer.check_quota(self.agent_id, self._agent_config.quota)
+            if not result["ok"]:
+                raise RuntimeError(f"Quota exceeded: {result['message']}")
+    
+    def _log_operation(self, operation: str, path: str, details: Dict = None):
+        """记录审计日志"""
+        if hasattr(self.vfs, '_audit_log'):
+            self.vfs._audit_log.log(self.agent_id, operation, path, details)
     
     def share(self, path: str, namespace: str,
               new_name: str = None) -> VFSNode:
