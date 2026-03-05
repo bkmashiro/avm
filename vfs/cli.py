@@ -373,6 +373,45 @@ def cmd_autolink(args):
     return 0
 
 
+def cmd_refresh(args):
+    """刷新 live 节点"""
+    from .refresh import RefreshManager, refresh_all_providers
+    
+    store = get_store(args.db)
+    
+    if args.all:
+        print("Refreshing all providers...")
+        stats = refresh_all_providers(store)
+        for prefix, count in stats.items():
+            print(f"  {prefix}: {count} nodes")
+        print(f"Done.")
+    elif args.path:
+        # 单个路径刷新（通过 read --refresh）
+        node, error = _get_provider(store, args.path, force_refresh=True)
+        if error:
+            print(f"Error: {error}", file=sys.stderr)
+            return 1
+        if node:
+            print(f"Refreshed: {node.path} (v{node.version})")
+        else:
+            print(f"Not found: {args.path}", file=sys.stderr)
+            return 1
+    else:
+        # 列出过期节点
+        from .refresh import RefreshManager
+        manager = RefreshManager(store)
+        expired = manager.get_expired()
+        
+        if expired:
+            print(f"Expired nodes ({len(expired)}):")
+            for node in expired:
+                print(f"  {node.path} (updated: {node.updated_at})")
+        else:
+            print("No expired nodes.")
+    
+    return 0
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="AI Virtual Filesystem",
@@ -461,6 +500,12 @@ def main():
     p_autolink.add_argument("--prefix", "-p", default="/", help="Path prefix")
     p_autolink.add_argument("--by", choices=["symbol", "tag", "all"], default="all")
     p_autolink.set_defaults(func=cmd_autolink)
+    
+    # refresh
+    p_refresh = subparsers.add_parser("refresh", help="Refresh live nodes")
+    p_refresh.add_argument("path", nargs="?", help="Path to refresh")
+    p_refresh.add_argument("--all", "-a", action="store_true", help="Refresh all providers")
+    p_refresh.set_defaults(func=cmd_refresh)
     
     args = parser.parse_args()
     
