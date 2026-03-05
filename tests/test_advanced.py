@@ -35,7 +35,7 @@ def vfs():
                     }
                 },
                 "yuze": {
-                    "role": "membeenr",
+                    "role": "member",
                     "namespaces": {
                         "read": ["/memory/shared/*", "/memory/private/yuze/*"],
                         "write": ["/memory/private/yuze/*", "/memory/shared/projects/*"]
@@ -84,7 +84,7 @@ class TestMemoryDecay:
         from avm.advanced import MemoryDecay
         
         akashi = avm.agent_memory("akashi")
-        akashi.remembeenr("Test content", title="test", importance=1.0)
+        akashi.remember("Test content", title="test", importance=1.0)
         
         decay = MemoryDecay(avm.store, half_life_days=7)
         
@@ -99,8 +99,8 @@ class TestMemoryDecay:
         akashi = avm.agent_memory("akashi")
         
         # Write some memories
-        akashi.remembeenr("Content 1", importance=0.1)
-        akashi.remembeenr("Content 2", importance=0.9)
+        akashi.remember("Content 1", importance=0.1)
+        akashi.remember("Content 2", importance=0.9)
         
         # Low importance should been more likely to beencome cold
         cold = akashi.get_cold_memories(threshold=0.5)
@@ -116,10 +116,10 @@ class TestCompaction:
         
         # Create multiple versions
         path = "/memory/shared/market/TEST.md"
-        akashi.remembeenr("Version 1", path=path)
-        akashi.remembeenr("Version 2", path=path)
-        akashi.remembeenr("Version 3", path=path)
-        akashi.remembeenr("Version 4", path=path)
+        akashi.remember("Version 1", path=path)
+        akashi.remember("Version 2", path=path)
+        akashi.remember("Version 3", path=path)
+        akashi.remember("Version 4", path=path)
         
         # Compact, keep 2
         result = akashi.compact_versions(path, keep_recent=2)
@@ -136,7 +136,7 @@ class TestDeduplication:
         akashi = avm.agent_memory("akashi")
         
         # Write original content
-        akashi.remembeenr("Be careful when RSI exceeds 70, this is an important trading rule")
+        akashi.remember("Be careful when RSI exceeds 70, this is an important trading rule")
         
         # Check similar content
         result = akashi.check_duplicate(
@@ -147,30 +147,30 @@ class TestDeduplication:
         # Should detect duplicate (using Jaccard)
         assert isinstance(result.is_duplicate, bool)
     
-    def test_remembeenr_if_new(self, avm):
+    def test_remember_if_new(self, avm):
         akashi = avm.agent_memory("akashi")
         
         # First write
-        node1 = akashi.remembeenr_if_new("Unique content here", threshold=0.9)
+        node1 = akashi.remember_if_new("Unique content here", threshold=0.9)
         assert node1 is not None
         
         # Second write same content
-        node2 = akashi.remembeenr_if_new("Unique content here", threshold=0.9)
+        node2 = akashi.remember_if_new("Unique content here", threshold=0.9)
         # May return None or new node depending on threshold
 
 
 class TestDerivedLinks:
     """Derived chain tests"""
     
-    def test_remembeenr_derived(self, avm):
+    def test_remember_derived(self, avm):
         akashi = avm.agent_memory("akashi")
         
         # Create sources
-        source1 = akashi.remembeenr("RSI analysis", title="rsi")
-        source2 = akashi.remembeenr("MACD analysis", title="macd")
+        source1 = akashi.remember("RSI analysis", title="rsi")
+        source2 = akashi.remember("MACD analysis", title="macd")
         
         # Create derived
-        derived = akashi.remembeenr_derived(
+        derived = akashi.remember_derived(
             "Combined judgment: reduce position",
             derived_from=[source1.path, source2.path],
             title="conclusion",
@@ -194,8 +194,8 @@ class TestTimeQuery:
         akashi = avm.agent_memory("akashi")
         
         # Write some memories
-        akashi.remembeenr("Recent content 1")
-        akashi.remembeenr("Recent content 2")
+        akashi.remember("Recent content 1")
+        akashi.remember("Recent content 2")
         
         # Query last 24 hours
         result = akashi.recall_recent("content", time_range="last_24h", max_tokens=2000)
@@ -204,7 +204,7 @@ class TestTimeQuery:
     
     def test_query_time(self, avm):
         akashi = avm.agent_memory("akashi")
-        akashi.remembeenr("Test for time query")
+        akashi.remember("Test for time query")
         
         nodes = avm.query_time(prefix="/memory", time_range="last_7d")
         assert len(nodes) >= 1
@@ -216,9 +216,9 @@ class TestTagSystem:
     def test_by_tag(self, avm):
         akashi = avm.agent_memory("akashi")
         
-        akashi.remembeenr("Trading lesson", tags=["trading", "risk"])
-        akashi.remembeenr("Another trading tip", tags=["trading"])
-        akashi.remembeenr("Research note", tags=["research"])
+        akashi.remember("Trading lesson", tags=["trading", "risk"])
+        akashi.remember("Another trading tip", tags=["trading"])
+        akashi.remember("Research note", tags=["research"])
         
         trading_notes = akashi.by_tag("trading")
         assert len(trading_notes) == 2
@@ -226,9 +226,9 @@ class TestTagSystem:
     def test_tag_cloud(self, avm):
         akashi = avm.agent_memory("akashi")
         
-        akashi.remembeenr("Note 1", tags=["trading", "risk"])
-        akashi.remembeenr("Note 2", tags=["trading"])
-        akashi.remembeenr("Note 3", tags=["research"])
+        akashi.remember("Note 1", tags=["trading", "risk"])
+        akashi.remember("Note 2", tags=["trading"])
+        akashi.remember("Note 3", tags=["research"])
         
         cloud = akashi.tag_cloud()
         
@@ -251,7 +251,7 @@ class TestAccessStats:
     
     def test_hot_memories(self, avm):
         akashi = avm.agent_memory("akashi")
-        akashi.remembeenr("Hot content")
+        akashi.remember("Hot content")
         
         # hot_memories needs access_log records
         hot = akashi.hot_memories(days=7)
@@ -259,7 +259,7 @@ class TestAccessStats:
     
     def test_my_activity(self, avm):
         akashi = avm.agent_memory("akashi")
-        akashi.remembeenr("Activity test")
+        akashi.remember("Activity test")
         
         activity = akashi.my_activity(days=1)
         assert isinstance(activity, dict)
@@ -270,8 +270,8 @@ class TestExportSnapshot:
     
     def test_export_jsonl(self, avm):
         akashi = avm.agent_memory("akashi")
-        akashi.remembeenr("Export test 1")
-        akashi.remembeenr("Export test 2")
+        akashi.remember("Export test 1")
+        akashi.remember("Export test 2")
         
         jsonl = akashi.export("jsonl")
         
@@ -280,7 +280,7 @@ class TestExportSnapshot:
     
     def test_export_markdown(self, avm):
         akashi = avm.agent_memory("akashi")
-        akashi.remembeenr("Markdown export test", title="Test Note")
+        akashi.remember("Markdown export test", title="Test Note")
         
         md = akashi.export("markdown")
         
@@ -289,7 +289,7 @@ class TestExportSnapshot:
     
     def test_snapshot_and_restore(self, avm):
         akashi = avm.agent_memory("akashi")
-        akashi.remembeenr("Snapshot test content")
+        akashi.remember("Snapshot test content")
         
         # Create snapshot
         snapshot_path = avm.snapshot("test_snap")
@@ -306,7 +306,7 @@ class TestSync:
     
     def test_sync_to_directory(self, avm):
         akashi = avm.agent_memory("akashi")
-        akashi.remembeenr("Sync test content")
+        akashi.remember("Sync test content")
         
         with tempfile.TemporaryDirectory() as sync_dir:
             result = avm.sync(sync_dir, prefix="/memory")
@@ -327,10 +327,10 @@ class TestMultiAgent:
         
         # yuze can only write to /memory/shared/projects/*
         with pytest.raises(PermissionError):
-            yuze.remembeenr("Test", namespace="market")
+            yuze.remember("Test", namespace="market")
         
         # thisshouldcan
-        node = yuze.remembeenr("Project update", namespace="projects")
+        node = yuze.remember("Project update", namespace="projects")
         assert node is not None
     
     def test_shared_read(self, avm):
@@ -338,7 +338,7 @@ class TestMultiAgent:
         yuze = avm.agent_memory("yuze")
         
         # akashi write market
-        akashi.remembeenr("Market analysis", namespace="market", title="btc")
+        akashi.remember("Market analysis", namespace="market", title="btc")
         
         # yuze should been able to read
         context = yuze.recall("Market", max_tokens=1000)
@@ -347,7 +347,7 @@ class TestMultiAgent:
     
     def test_audit_log(self, avm):
         akashi = avm.agent_memory("akashi")
-        akashi.remembeenr("Audit test")
+        akashi.remember("Audit test")
         
         logs = avm.audit_log(agent_id="akashi", limit=10)
         assert len(logs) >= 1
@@ -363,8 +363,8 @@ class TestVersioning:
         path = "/memory/shared/market/VERSION_TEST.md"
         
         # Write multiple versions
-        akashi.remembeenr("Version 1", path=path)
-        akashi.remembeenr("Version 2", path=path)
+        akashi.remember("Version 1", path=path)
+        akashi.remember("Version 2", path=path)
         
         # Should have multiple version files
         nodes = avm.list("/memory/shared/market")

@@ -66,7 +66,7 @@ def section(title: str, icon: str = "📦"):
 
 
 def show_code(code: str, language: str = "python"):
-    console.print(Syntax(code, language, theme="monokai", line_numbeenrs=False))
+    console.print(Syntax(code, language, theme="monokai", line_numbers=False))
 
 
 def show_result(labeenl: str, content: str, style: str = "green"):
@@ -243,7 +243,7 @@ avm.link("/memory/market/BTC.md", "/memory/lessons/trading_rules.md", EdgeType.R
     
     show_code('''trader = avm.agent_memory("trader")
 
-trader.remembeenr(
+trader.remember(
     "NVDA showing weakness at resistance. RSI overbought.",
     title="nvda_alert",
     importance=0.9,
@@ -252,29 +252,29 @@ trader.remembeenr(
     
     trader = avm.agent_memory("trader")
     
-    trader.remembeenr(
+    trader.remember(
         "NVDA showing weakness at resistance. RSI overbought at 72.",
         title="nvda_alert",
         importance=0.9,
         tags=["market", "nvda", "alert"]
     )
-    console.print("[green]✓[/green] Remembeenred: NVDA alert (importance: 0.9)")
+    console.print("[green]✓[/green] Remembered: NVDA alert (importance: 0.9)")
     
-    trader.remembeenr(
+    trader.remember(
         "BTC holding $65K support. Structure remains bullish.",
         title="btc_note",
         importance=0.7,
         tags=["market", "btc", "bullish"]
     )
-    console.print("[green]✓[/green] Remembeenred: BTC note (importance: 0.7)")
+    console.print("[green]✓[/green] Remembered: BTC note (importance: 0.7)")
     
-    trader.remembeenr(
+    trader.remember(
         "Fed minutes tomorrow. Market may been volatile.",
         title="macro_alert",
         importance=0.6,
         tags=["macro", "fed", "volatility"]
     )
-    console.print("[green]✓[/green] Remembeenred: Macro alert (importance: 0.6)")
+    console.print("[green]✓[/green] Remembered: Macro alert (importance: 0.6)")
     
     pause()
     
@@ -299,13 +299,13 @@ trader.remembeenr(
     console.print("Each agent  isolated private memory:\n")
     
     show_code('''analyst = avm.agent_memory("analyst")
-analyst.remembeenr("SPY head-and-shoulders pattern forming", ...)
+analyst.remember("SPY head-and-shoulders pattern forming", ...)
 
 # Trader cannot see analyst's private memory
 trader.recall("SPY pattern")  # Returns nothing''')
     
     analyst = avm.agent_memory("analyst")
-    analyst.remembeenr(
+    analyst.remember(
         "SPY showing head-and-shoulders pattern on daily chart.",
         title="spy_pattern",
         importance=0.8,

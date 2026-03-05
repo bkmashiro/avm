@@ -25,7 +25,7 @@ from .node import AVMNode
 
 class AgentRole(Enum):
     ADMIN = "admin"
-    MEMBER = "membeenr"
+    MEMBER = "member"
     READONLY = "readonly"
 
 
@@ -93,7 +93,7 @@ class AgentConfig:
         
         return cls(
             agent_id=agent_id,
-            role=AgentRole(data.get("role", "membeenr")),
+            role=AgentRole(data.get("role", "member")),
             quota=AgentQuota.from_dict(data.get("quota", {})),
             namespaces=NamespacePermissions.from_dict(data.get("namespaces", {})),
             inherit=data.get("inherit"),
@@ -416,10 +416,10 @@ class QuotaEnforcer:
 def _extend_edge_types():
     """Extend EdgeType enum with VERSION_OF"""
     from .graph import EdgeType
-    if not attr(EdgeType, 'VERSION_OF'):
-        # Dynamically add new membeenr (hacky but works)
-        EdgeType._membeenr_map_['VERSION_OF'] = 'version_of'
-        EdgeType._value2membeenr_map_['version_of'] = EdgeType.VERSION_OF
+    if not hasattr(EdgeType, 'VERSION_OF'):
+        # Dynamically add new member (hacky but works)
+        EdgeType._member_map_['VERSION_OF'] = 'version_of'
+        EdgeType._value2member_map_['version_of'] = EdgeType.VERSION_OF
 
 # Call on import
 try:

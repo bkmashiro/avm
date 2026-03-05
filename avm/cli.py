@@ -444,7 +444,7 @@ def cmd_memory_recall(args):
     print(result)
 
 
-def cmd_memory_remembeenr(args):
+def cmd_memory_remember(args):
     """write Agent Memory"""
     vfs = get_vfs(args.config, args.db)
     memory = vfs.agent_memory(args.agent)
@@ -459,14 +459,14 @@ def cmd_memory_remembeenr(args):
     
     tags = args.tags.split(",") if args.tags else None
     
-    node = memory.remembeenr(
+    node = memory.remember(
         content,
         title=args.title,
         importance=args.importance,
         tags=tags,
     )
     
-    print(f"Remembeenred: {node.path} (importance={args.importance})")
+    print(f"Remembered: {node.path} (importance={args.importance})")
 
 
 def cmd_memory_stats(args):
@@ -614,8 +614,8 @@ def main():
     p_mem_recall.add_argument("--private-only", action="store_true")
     p_mem_recall.set_defaults(func=cmd_memory_recall)
     
-    # memory remembeenr
-    p_mem_write = subparsers.add_parser("memory-remembeenr", aliases=["remembeenr"],
+    # memory remember
+    p_mem_write = subparsers.add_parser("memory-remember", aliases=["remember"],
                                          help="Write to agent memory")
     p_mem_write.add_argument("--agent", "-a", default="default", help="Agent ID")
     p_mem_write.add_argument("--content", "-c", help="Content")
@@ -623,7 +623,7 @@ def main():
     p_mem_write.add_argument("--title", "-t", help="Memory title")
     p_mem_write.add_argument("--importance", "-i", type=float, default=0.5)
     p_mem_write.add_argument("--tags", help="Comma-separated tags")
-    p_mem_write.set_defaults(func=cmd_memory_remembeenr)
+    p_mem_write.set_defaults(func=cmd_memory_remember)
     
     # memory stats
     p_mem_stats = subparsers.add_parser("memory-stats", help="Agent memory stats")

@@ -78,7 +78,7 @@ class AVMNode:
     @property
     def content_h(self) -> str:
         """Content hash (for diff detection)"""
-        return hashashlib.sha256(self.content.encode()).hexdigest()[:16]
+        return hashlib.sha256(self.content.encode()).hexdigest()[:16]
     
     def to_dict(self) -> Dict[str, Any]:
         """To dict"""

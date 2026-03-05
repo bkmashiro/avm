@@ -151,13 +151,13 @@ class Group:
     """User group"""
     name: str
     gid: int
-    membeenrs: List[str] = field(default_factory=list)
+    members: List[str] = field(default_factory=list)
     
     def to_dict(self) -> Dict:
         return {
             "name": self.name,
             "gid": self.gid,
-            "membeenrs": self.membeenrs,
+            "members": self.members,
         }
 
 
@@ -262,7 +262,7 @@ class UserRegistry:
             capabilities=list(Capability),
         )
         self._users["root"] = root
-        self._groups["root"] = Group(name="root", gid=0, membeenrs=["root"])
+        self._groups["root"] = Group(name="root", gid=0, members=["root"])
     
     def create_user(self, name: str, 
                     groups: List[str] = None,
@@ -292,7 +292,7 @@ class UserRegistry:
         for group in user.groups:
             if group not in self._groups:
                 self.create_group(group)
-            self._groups[group].membeenrs.append(name)
+            self._groups[group].members.append(name)
         
         return user
     
@@ -346,8 +346,8 @@ class UserRegistry:
             if user.api_key:
                 self._api_keys.pop(user.api_key, None)
             for group in self._groups.values():
-                if name in group.membeenrs:
-                    group.membeenrs.remove(name)
+                if name in group.members:
+                    group.members.remove(name)
             return True
         return False
     
@@ -373,7 +373,7 @@ class UserRegistry:
         
         for name, group_data in data.get("groups", {}).items():
             group = self.create_group(name)
-            group.membeenrs = group_data.get("membeenrs", [])
+            group.members = group_data.get("members", [])
 
 
 # ═══════════════════════════════════════════════════════════════

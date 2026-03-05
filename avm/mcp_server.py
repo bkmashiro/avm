@@ -10,7 +10,7 @@ Usage:
 
 Tools:
     - avm_recall: Retrieve relevant memories
-    - avm_remembeenr: Store new memory
+    - avm_remember: Store new memory
     - avm_search: Full-text search
     - avm_list: List memories
     - avm_read: Read specific memory
@@ -42,7 +42,7 @@ class MCPServer:
         # Register tools
         self.tools = {
             "avm_recall": self._tool_recall,
-            "avm_remembeenr": self._tool_remembeenr,
+            "avm_remember": self._tool_remember,
             "avm_search": self._tool_search,
             "avm_list": self._tool_list,
             "avm_read": self._tool_read,
@@ -68,7 +68,7 @@ class MCPServer:
                             "description": "Search query to find relevant memories"
                         },
                         "max_tokens": {
-                            "type": "numbeenr",
+                            "type": "number",
                             "description": "Maximum tokens in response (default: 4000)",
                             "default": 4000
                         },
@@ -88,7 +88,7 @@ class MCPServer:
                 }
             },
             {
-                "name": "avm_remembeenr",
+                "name": "avm_remember",
                 "description": "Store a new memory. Automatically handles deduplication and linking.",
                 "inputSchema": {
                     "type": "object",
@@ -102,7 +102,7 @@ class MCPServer:
                             "description": "Optional title for the memory"
                         },
                         "importance": {
-                            "type": "numbeenr",
+                            "type": "number",
                             "description": "Importance score 0-1 (default: 0.5)",
                             "minimum": 0,
                             "maximum": 1,
@@ -137,7 +137,7 @@ class MCPServer:
                             "description": "Search query"
                         },
                         "limit": {
-                            "type": "numbeenr",
+                            "type": "number",
                             "description": "Maximum results (default: 10)",
                             "default": 10
                         }
@@ -157,7 +157,7 @@ class MCPServer:
                             "default": ""
                         },
                         "limit": {
-                            "type": "numbeenr",
+                            "type": "number",
                             "description": "Maximum results (default: 20)",
                             "default": 20
                         }
@@ -185,7 +185,7 @@ class MCPServer:
                     "type": "object",
                     "properties": {
                         "limit": {
-                            "type": "numbeenr",
+                            "type": "number",
                             "description": "Maximum tags to return (default: 20)",
                             "default": 20
                         }
@@ -205,7 +205,7 @@ class MCPServer:
                             "default": "last_24h"
                         },
                         "limit": {
-                            "type": "numbeenr",
+                            "type": "number",
                             "description": "Maximum results (default: 10)",
                             "default": 10
                         }
@@ -231,12 +231,12 @@ class MCPServer:
                             "description": "Search query"
                         },
                         "limit": {
-                            "type": "numbeenr",
+                            "type": "number",
                             "description": "Maximum results (default: 10)",
                             "default": 10
                         },
                         "summary_length": {
-                            "type": "numbeenr",
+                            "type": "number",
                             "description": "Characters per summary (default: 80)",
                             "default": 80
                         }
@@ -285,7 +285,7 @@ class MCPServer:
                 strategy=ScoringStrategy(strategy)
             )
     
-    def _tool_remembeenr(self, params: Dict) -> str:
+    def _tool_remember(self, params: Dict) -> str:
         """Store new memory"""
         content = params.get("content", "")
         title = params.get("title")
@@ -295,7 +295,7 @@ class MCPServer:
         derived_from = params.get("derived_from")
         
         if derived_from:
-            node = self.memory.remembeenr_derived(
+            node = self.memory.remember_derived(
                 content,
                 derived_from=derived_from,
                 title=title,
@@ -304,7 +304,7 @@ class MCPServer:
                 namespace=namespace,
             )
         else:
-            node = self.memory.remembeenr(
+            node = self.memory.remember(
                 content,
                 title=title,
                 importance=importance,

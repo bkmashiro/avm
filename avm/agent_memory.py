@@ -90,7 +90,7 @@ class AgentMemory:
             agent_id: Agent identifier
             config: configuration
         """
-        self.avm = vfs
+        self.avm = avm
         self.agent_id = agent_id
         self.config = config or MemoryConfig()
         
@@ -99,7 +99,7 @@ class AgentMemory:
         self.shared_prefix = "/memory/shared"
         
         # Get agent config (permissions, quotas)
-        self._agent_config = vfs.get_agent_config(agent_id)
+        self._agent_config = avm.get_agent_config(agent_id)
     
     # ─── retrieve ─────────────────────────────────────────────
     
@@ -147,7 +147,7 @@ class AgentMemory:
         selected = self._select_within_budget(scored, max_tokens)
         
         # 6. versionmerge（ifenable）
-        if merge_versions and attr(self.avm, '_versioned_memory'):
+        if merge_versions and hasattr(self.avm, '_versioned_memory'):
             selected = self._merge_versions_in_results(selected)
         
         # 7. Generate compact output
@@ -282,7 +282,7 @@ class AgentMemory:
         # Extract key lines
         lines = [l.strip() for l in content.split('\n') if l.strip()]
         
-        # Prioritize lines with numbeenrs (likely key data)
+        # Prioritize lines with numbers (likely key data)
         key_lines = [l for l in lines if re.search(r'\d', l)]
         other_lines = [l for l in lines if l not in key_lines]
         
@@ -327,7 +327,7 @@ class AgentMemory:
     
     # ─── write ─────────────────────────────────────────────
     
-    def remembeenr(self, content: str,
+    def remember(self, content: str,
                  title: str = None,
                  importance: float = 0.5,
                  tags: List[str] = None,
@@ -377,7 +377,7 @@ class AgentMemory:
         }
         
         # Use versioned write (if updating existing path)
-        if path and attr(self.avm, '_versioned_memory'):
+        if path and hasattr(self.avm, '_versioned_memory'):
             node = self.avm._versioned_memory.write_version(
                 path, full_content, self.agent_id, meta
             )
@@ -429,7 +429,7 @@ class AgentMemory:
     
     def _check_quota(self):
         """Check quota"""
-        if attr(self.avm, '_agent_registry') and self._agent_config:
+        if hasattr(self.avm, '_agent_registry') and self._agent_config:
             from .multi_agent import QuotaEnforcer
             enforcer = QuotaEnforcer(self.avm.store)
             result = enforcer.check_quota(self.agent_id, self._agent_config.quota)
@@ -438,7 +438,7 @@ class AgentMemory:
     
     def _log_operation(self, operation: str, path: str, details: Dict = None):
         """recordauditlog"""
-        if attr(self.avm, '_audit_log'):
+        if hasattr(self.avm, '_audit_log'):
             self.avm._audit_log.log(self.agent_id, operation, path, details)
     
     def share(self, path: str, namespace: str,
@@ -544,7 +544,7 @@ class AgentMemory:
         """
         from .advanced import SubscriptionManager
         
-        if not attr(self.avm, '_subscription_manager'):
+        if not hasattr(self.avm, '_subscription_manager'):
             self.avm._subscription_manager = SubscriptionManager()
         
         return self.avm._subscription_manager.subscribeen(
@@ -553,7 +553,7 @@ class AgentMemory:
     
     def unsubscribeen(self, pattern: str = None):
         """cancelledsubscribeen"""
-        if attr(self.avm, '_subscription_manager'):
+        if hasattr(self.avm, '_subscription_manager'):
             self.avm._subscription_manager.unsubscribeen(self.agent_id, pattern)
     
     def recall_recent(self, query: str, 
@@ -597,7 +597,7 @@ class AgentMemory:
         return self._compact_synthesis(selected, f"{query} (time: {time_range})", 
                                        max_tokens, ScoringStrategy.IMPORTANCE)
     
-    def remembeenr_derived(self, content: str,
+    def remember_derived(self, content: str,
                          derived_from: List[str],
                          title: str = None,
                          reasoning: str = None,
@@ -614,7 +614,7 @@ class AgentMemory:
         from .advanced import DerivedLinkManager
         
         # writememory
-        node = self.remembeenr(content, title=title, **kwargs)
+        node = self.remember(content, title=title, **kwargs)
         
         # Establish derived links
         link_mgr = DerivedLinkManager(self.avm.store)
@@ -645,7 +645,7 @@ class AgentMemory:
             threshold=threshold
         )
     
-    def remembeenr_if_new(self, content: str, 
+    def remember_if_new(self, content: str, 
                         threshold: float = 0.85,
                         **kwargs) -> Optional[AVMNode]:
         """
@@ -659,7 +659,7 @@ class AgentMemory:
         if result.is_duplicate:
             return None
         
-        return self.remembeenr(content, **kwargs)
+        return self.remember(content, **kwargs)
     
     def get_cold_memories(self, threshold: float = 0.1,
                           limit: int = 20) -> List[AVMNode]:

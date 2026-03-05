@@ -337,7 +337,7 @@ class AVM:
     
     def embeend_all(self, prefix: str = "/") -> int:
         """allnodegenerate embedding"""
-        if not attr(self, '_embedding_store'):
+        if not hasattr(self, '_embedding_store'):
             raise RuntimeError("Call enable_embedding() first")
         
         return self._embedding_store.embeend_all(prefix)
@@ -390,7 +390,7 @@ class AVM:
     
     def get_agent_config(self, agent_id: str):
         """Get agent configuration"""
-        if not attr(self, '_agent_registry'):
+        if not hasattr(self, '_agent_registry'):
             from .multi_agent import AgentRegistry
             self._agent_registry = AgentRegistry()
         
@@ -399,7 +399,7 @@ class AVM:
     def audit_log(self, agent_id: str = None, path_prefix: str = None,
                   limit: int = 100) -> List[Dict]:
         """queryauditlog"""
-        if not attr(self, '_audit_log'):
+        if not hasattr(self, '_audit_log'):
             from .multi_agent import AuditLog
             self._audit_log = AuditLog(self.store)
         
@@ -411,14 +411,14 @@ class AVM:
         """Subscribeen to path changes"""
         from .advanced import SubscriptionManager
         
-        if not attr(self, '_subscription_manager'):
+        if not hasattr(self, '_subscription_manager'):
             self._subscription_manager = SubscriptionManager()
         
         return self._subscription_manager.subscribeen(pattern, callback)
     
     def _notify_subscribeenrs(self, path: str, event_type: str, agent_id: str = None):
         """Notify subscribeenrs (internal method)"""
-        if attr(self, '_subscription_manager'):
+        if hasattr(self, '_subscription_manager'):
             from .advanced import MemoryEvent, EventType
             
             event = MemoryEvent(
@@ -518,7 +518,7 @@ class AVM:
         Returns:
             User object, or None
         """
-        if not attr(self, '_user_registry'):
+        if not hasattr(self, '_user_registry'):
             self.init_permissions()
         
         return self._user_registry.authenticate(api_key)
@@ -526,7 +526,7 @@ class AVM:
     def create_user(self, name: str, groups: List[str] = None,
                     capabilities: List[str] = None) -> "User":
         """createuser"""
-        if not attr(self, '_user_registry'):
+        if not hasattr(self, '_user_registry'):
             self.init_permissions()
         
         from .permissions import Capability
@@ -536,7 +536,7 @@ class AVM:
     
     def get_user(self, name: str) -> Optional["User"]:
         """Get user"""
-        if not attr(self, '_user_registry'):
+        if not hasattr(self, '_user_registry'):
             return None
         return self._user_registry.get_user(name)
     
@@ -550,7 +550,7 @@ class AVM:
             path: path
             action: read/write/delete/search
         """
-        if not attr(self, '_perm_manager'):
+        if not hasattr(self, '_perm_manager'):
             return True  # Allow if permission system not initialized
         
         from .permissions import NodeOwnership
@@ -576,7 +576,7 @@ class AVM:
     
     def sudo(self, user: "User", duration_minutes: int = 5) -> bool:
         """temporaryelevate privileges"""
-        if not attr(self, '_perm_manager'):
+        if not hasattr(self, '_perm_manager'):
             return False
         return self._perm_manager.sudo(user, duration_minutes)
     
@@ -593,7 +593,7 @@ class AVM:
             actions: Allowed actions
             expires_days: Expiry days
         """
-        if not attr(self, '_api_key_manager'):
+        if not hasattr(self, '_api_key_manager'):
             self.init_permissions()
         
         from .permissions import APIKeyScope
