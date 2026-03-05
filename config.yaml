@@ -1,0 +1,32 @@
+# config.yaml — VFS Mount Configuration
+# Zero-code customization: add providers here without modifying Python.
+#
+# Supported mount types:
+#   static_file  — serve local files from a directory
+#   http         — fetch from HTTP URL template
+#
+# For advanced providers (Alpaca, EDGAR, custom functions),
+# add them in trading/providers.py or your own module.
+
+mounts:
+  # Example: serve local markdown docs at /docs/*
+  # - type: static_file
+  #   pattern: /docs/*
+  #   base_dir: ~/Documents/knowledge-base
+  #   ttl: 0        # 0 = never expires
+
+  # Example: Wikipedia summary API at /wiki/*
+  # - type: http
+  #   pattern: /wiki/*
+  #   url_template: "https://en.wikipedia.org/api/rest_v1/page/summary/{path}"
+  #   ttl: 86400    # 24h cache
+
+  # Example: static notes directory
+  # - type: static_file
+  #   pattern: /notes/*
+  #   base_dir: ~/.openclaw/workspace/notes
+  #   ttl: 300
+
+settings:
+  default_ttl: 3600    # seconds; used when provider doesn't specify
+  db_path: ~/.openclaw/workspace/vfs/vfs.db
