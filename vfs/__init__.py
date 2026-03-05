@@ -5,13 +5,14 @@ AI Virtual Filesystem (VFS)
 配置驱动，支持自定义 provider 和权限规则。
 """
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 
 from .node import VFSNode
 from .graph import KVGraph
 from .store import VFSStore
 from .config import VFSConfig, ProviderSpec, PermissionRule, load_config
 from .core import VFS, register_provider_type
+from .retrieval import Retriever, DocumentSynthesizer, RetrievalResult
 
 __all__ = [
     # Core
@@ -25,4 +26,8 @@ __all__ = [
     "PermissionRule",
     "load_config",
     "register_provider_type",
+    # Retrieval
+    "Retriever",
+    "DocumentSynthesizer",
+    "RetrievalResult",
 ]

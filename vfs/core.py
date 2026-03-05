@@ -272,3 +272,72 @@ class VFS:
     def stats(self) -> Dict:
         """存储统计"""
         return self.store.stats()
+    
+    # ─── 联动检索 ─────────────────────────────────────────
+    
+    def retrieve(self, query: str, k: int = 5,
+                 expand_graph: bool = True,
+                 graph_depth: int = 1) -> "RetrievalResult":
+        """
+        联动检索
+        
+        1. 语义搜索 (如果有 embedding)
+        2. FTS5 全文搜索
+        3. 图扩展
+        """
+        from .retrieval import Retriever, RetrievalResult
+        
+        # 获取或创建 embedding store
+        embedding_store = getattr(self, '_embedding_store', None)
+        
+        retriever = Retriever(self.store, embedding_store)
+        return retriever.retrieve(
+            query, k=k,
+            expand_graph=expand_graph,
+            graph_depth=graph_depth
+        )
+    
+    def synthesize(self, query: str, k: int = 5,
+                   title: str = None) -> str:
+        """
+        动态生成综合文档
+        
+        一行调用:
+            vfs.synthesize("NVDA风险分析")
+        
+        Returns: Markdown 格式的综合文档
+        """
+        from .retrieval import Retriever, DocumentSynthesizer
+        
+        embedding_store = getattr(self, '_embedding_store', None)
+        retriever = Retriever(self.store, embedding_store)
+        synthesizer = DocumentSynthesizer(self.store)
+        
+        result = retriever.retrieve(query, k=k, expand_graph=True)
+        doc = synthesizer.synthesize(result, title=title)
+        
+        return doc.to_markdown()
+    
+    def enable_embedding(self, backend: "EmbeddingBackend" = None,
+                         model: str = "text-embedding-3-small"):
+        """
+        启用语义搜索
+        
+        Args:
+            backend: 自定义 embedding 后端
+            model: OpenAI 模型名称（如果不提供 backend）
+        """
+        from .embedding import EmbeddingStore, OpenAIEmbedding
+        
+        if backend is None:
+            backend = OpenAIEmbedding(model=model)
+        
+        self._embedding_store = EmbeddingStore(self.store, backend)
+        return self._embedding_store
+    
+    def embed_all(self, prefix: str = "/") -> int:
+        """为所有节点生成 embedding"""
+        if not hasattr(self, '_embedding_store'):
+            raise RuntimeError("Call enable_embedding() first")
+        
+        return self._embedding_store.embed_all(prefix)

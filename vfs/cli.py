@@ -373,6 +373,58 @@ def cmd_config(args):
     return 0
 
 
+def cmd_retrieve(args):
+    """联动检索"""
+    vfs = get_vfs(args.config, args.db)
+    
+    result = vfs.retrieve(
+        args.query,
+        k=args.limit,
+        expand_graph=not args.no_graph,
+        graph_depth=args.depth,
+    )
+    
+    if args.json:
+        print(json.dumps({
+            "query": result.query,
+            "nodes": [{"path": n.path, "score": result.scores.get(n.path, 0)} 
+                      for n in result.nodes],
+            "sources": result.sources,
+            "edges": result.graph_edges,
+        }, indent=2))
+    else:
+        print(f"Query: {result.query}")
+        print(f"Found: {len(result.nodes)} nodes")
+        print()
+        
+        for node in result.nodes:
+            score = result.get_score(node.path)
+            source = result.get_source(node.path)
+            badge = {"semantic": "🎯", "fts": "📝", "graph": "🔗"}.get(source, "")
+            print(f"{badge} [{score:.2f}] {node.path}")
+        
+        if result.graph_edges:
+            print()
+            print("Graph edges:")
+            for src, tgt, etype in result.graph_edges:
+                print(f"  {src} --[{etype}]--> {tgt}")
+    
+    return 0
+
+
+def cmd_synthesize(args):
+    """生成综合文档"""
+    vfs = get_vfs(args.config, args.db)
+    
+    doc = vfs.synthesize(
+        args.query,
+        k=args.limit,
+        title=args.title,
+    )
+    
+    print(doc)
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="AI Virtual Filesystem (config-driven)",
@@ -472,6 +524,21 @@ def main():
     # config
     p_config = subparsers.add_parser("config", help="Show configuration")
     p_config.set_defaults(func=cmd_config)
+    
+    # retrieve (联动检索)
+    p_retrieve = subparsers.add_parser("retrieve", help="Linked retrieval")
+    p_retrieve.add_argument("query", help="Search query")
+    p_retrieve.add_argument("--limit", "-n", type=int, default=5)
+    p_retrieve.add_argument("--depth", "-d", type=int, default=1, help="Graph expansion depth")
+    p_retrieve.add_argument("--no-graph", action="store_true", help="Disable graph expansion")
+    p_retrieve.set_defaults(func=cmd_retrieve)
+    
+    # synthesize (动态文档)
+    p_synth = subparsers.add_parser("synthesize", aliases=["synth"], help="Generate dynamic document")
+    p_synth.add_argument("query", help="Query topic")
+    p_synth.add_argument("--limit", "-n", type=int, default=5)
+    p_synth.add_argument("--title", "-t", help="Document title")
+    p_synth.set_defaults(func=cmd_synthesize)
     
     args = parser.parse_args()
     
