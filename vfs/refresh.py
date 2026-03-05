@@ -1,7 +1,7 @@
 """
-vfs/refresh.py - 自动刷新机制
+vfs/refresh.py - autorefresh机制
 
-定时刷新过期的 live 节点
+scheduledrefreshexpired的 live node
 """
 
 import time
@@ -16,16 +16,16 @@ from .node import VFSNode
 
 class RefreshScheduler:
     """
-    刷新调度器
+    refresh调度器
     
-    定时刷新过期的 live 节点
+    scheduledrefreshexpired的 live node
     """
     
     def __init__(self, store: VFSStore, interval_seconds: int = 60):
         """
         Args:
-            store: VFS 存储
-            interval_seconds: 检查间隔（秒）
+            store: VFS storage
+            interval_seconds: checkinterval（秒）
         """
         self.store = store
         self.interval = interval_seconds
@@ -34,17 +34,17 @@ class RefreshScheduler:
         self._callbacks: List[Callable[[VFSNode], None]] = []
     
     def add_callback(self, callback: Callable[[VFSNode], None]):
-        """添加刷新回调"""
+        """addrefreshcallback"""
         self._callbacks.append(callback)
     
     def _refresh_expired(self):
-        """刷新所有过期节点"""
+        """refreshallexpirednode"""
         nodes = self.store.list_nodes("/live", limit=1000)
         refreshed = []
         
         for node in nodes:
             if node.is_expired:
-                # 通过 provider 刷新（需要外部配置）
+                # via provider refresh（requiresexternalconfiguration）
                 refreshed.append(node)
                 
                 for callback in self._callbacks:
@@ -56,7 +56,7 @@ class RefreshScheduler:
         return refreshed
     
     def _run_loop(self):
-        """后台刷新循环"""
+        """backgroundrefresh循环"""
         while not self._stop_event.is_set():
             try:
                 self._refresh_expired()
@@ -66,7 +66,7 @@ class RefreshScheduler:
             self._stop_event.wait(self.interval)
     
     def start(self):
-        """启动后台刷新"""
+        """启动backgroundrefresh"""
         if self._thread and self._thread.is_alive():
             return
         
@@ -75,7 +75,7 @@ class RefreshScheduler:
         self._thread.start()
     
     def stop(self):
-        """停止后台刷新"""
+        """stopbackgroundrefresh"""
         self._stop_event.set()
         if self._thread:
             self._thread.join(timeout=5)
@@ -83,9 +83,9 @@ class RefreshScheduler:
 
 class RefreshManager:
     """
-    刷新管理器
+    refresh管理器
     
-    手动刷新指定路径或所有 live 节点
+    manualrefreshspecifiedpath或all live node
     """
     
     def __init__(self, store: VFSStore):
@@ -93,11 +93,11 @@ class RefreshManager:
         self._providers = {}
     
     def register_provider(self, prefix: str, provider):
-        """注册 provider"""
+        """register provider"""
         self._providers[prefix] = provider
     
     def refresh_path(self, path: str, force: bool = True) -> Optional[VFSNode]:
-        """刷新指定路径"""
+        """refreshspecifiedpath"""
         for prefix, provider in self._providers.items():
             if path.startswith(prefix):
                 return provider.get(path, force_refresh=force)
@@ -105,7 +105,7 @@ class RefreshManager:
         return None
     
     def refresh_prefix(self, prefix: str) -> List[VFSNode]:
-        """刷新指定前缀下的所有节点"""
+        """refreshspecifiedprefixunderallnode"""
         nodes = self.store.list_nodes(prefix, limit=1000)
         refreshed = []
         
@@ -117,7 +117,7 @@ class RefreshManager:
         return refreshed
     
     def refresh_all(self) -> Dict[str, int]:
-        """刷新所有 live 节点"""
+        """refreshall live node"""
         stats = {}
         
         for prefix in self._providers.keys():
@@ -127,16 +127,16 @@ class RefreshManager:
         return stats
     
     def get_expired(self) -> List[VFSNode]:
-        """获取所有过期节点"""
+        """getallexpirednode"""
         nodes = self.store.list_nodes("/live", limit=1000)
         return [n for n in nodes if n.is_expired]
 
 
 def refresh_all_providers(store: VFSStore) -> Dict[str, int]:
     """
-    刷新所有 provider
+    refreshall provider
     
-    便捷函数，自动加载所有已知 provider
+    convenientfunction，autoloadallalready知 provider
     """
     from .providers import (
         TechnicalIndicatorsProvider,
@@ -146,12 +146,12 @@ def refresh_all_providers(store: VFSStore) -> Dict[str, int]:
     
     manager = RefreshManager(store)
     
-    # 注册无需认证的 providers
+    # registerno需auth的 providers
     manager.register_provider("/live/indicators", TechnicalIndicatorsProvider(store))
     manager.register_provider("/live/news", NewsProvider(store))
     manager.register_provider("/live/watchlist", WatchlistProvider(store))
     
-    # 尝试注册 Alpaca（需要凭证）
+    # tryregister Alpaca（requirescredentials）
     env_path = Path.home() / ".openclaw" / "workspace" / "trading" / ".env"
     if env_path.exists():
         from .providers import AlpacaPositionsProvider, AlpacaOrdersProvider

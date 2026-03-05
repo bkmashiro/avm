@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
-vfs/cli.py - VFS 命令行接口
+vfs/cli.py - VFS 命令lineinterface
 
-配置驱动的虚拟文件系统 CLI
+Config-driven virtual filesystem CLI
 
-用法:
+usage:
     vfs read /market/indicators/AAPL.md
-    vfs write /memory/lesson.md --content "今天学到..."
+    vfs write /memory/lesson.md --content "今天学to..."
     vfs search "RSI oversold"
     vfs links /research/MSFT.md
     vfs stats
@@ -25,7 +25,7 @@ from .graph import EdgeType
 
 
 def get_vfs(config_path: Optional[str] = None, db_path: Optional[str] = None) -> VFS:
-    """获取 VFS 实例"""
+    """Get VFS instance"""
     config = load_config(config_path)
     if db_path:
         config.db_path = db_path
@@ -33,7 +33,7 @@ def get_vfs(config_path: Optional[str] = None, db_path: Optional[str] = None) ->
 
 
 def cmd_read(args):
-    """读取节点"""
+    """readnode"""
     vfs = get_vfs(args.config, args.db)
     path = args.path
     
@@ -62,11 +62,11 @@ def cmd_read(args):
 
 
 def cmd_write(args):
-    """写入节点"""
+    """writenode"""
     vfs = get_vfs(args.config, args.db)
     path = args.path
     
-    # 获取内容
+    # Get content
     if args.content:
         content = args.content
     elif args.file:
@@ -74,7 +74,7 @@ def cmd_write(args):
     else:
         content = sys.stdin.read()
     
-    # 解析元数据
+    # Parse metadata
     meta = {}
     if args.meta:
         meta = json.loads(args.meta)
@@ -94,7 +94,7 @@ def cmd_write(args):
 
 
 def cmd_delete(args):
-    """删除节点"""
+    """deletenode"""
     vfs = get_vfs(args.config, args.db)
     path = args.path
     
@@ -111,7 +111,7 @@ def cmd_delete(args):
 
 
 def cmd_list(args):
-    """列出节点"""
+    """listnode"""
     vfs = get_vfs(args.config, args.db)
     
     nodes = vfs.list(args.prefix, limit=args.limit)
@@ -127,7 +127,7 @@ def cmd_list(args):
 
 
 def cmd_links(args):
-    """查看节点关联"""
+    """查看noderelated"""
     vfs = get_vfs(args.config, args.db)
     path = args.path
     
@@ -157,7 +157,7 @@ def cmd_links(args):
 
 
 def cmd_link(args):
-    """添加关联"""
+    """addrelated"""
     vfs = get_vfs(args.config, args.db)
     
     edge_type = EdgeType(args.type)
@@ -168,7 +168,7 @@ def cmd_link(args):
 
 
 def cmd_search(args):
-    """全文搜索"""
+    """full-textsearch"""
     vfs = get_vfs(args.config, args.db)
     
     results = vfs.search(args.query, limit=args.limit)
@@ -192,7 +192,7 @@ def cmd_search(args):
 
 
 def cmd_history(args):
-    """查看变更历史"""
+    """查看changehistory"""
     vfs = get_vfs(args.config, args.db)
     
     diffs = vfs.history(args.path, limit=args.limit)
@@ -210,7 +210,7 @@ def cmd_history(args):
 
 
 def cmd_stats(args):
-    """存储统计"""
+    """storagestatistics"""
     vfs = get_vfs(args.config, args.db)
     
     stats = vfs.stats()
@@ -233,7 +233,7 @@ def cmd_stats(args):
 
 
 def cmd_import(args):
-    """导入文件"""
+    """importfile"""
     from .tools import VFSImporter
     
     vfs = get_vfs(args.config, args.db)
@@ -261,7 +261,7 @@ def cmd_import(args):
 
 
 def cmd_export(args):
-    """导出节点"""
+    """exportnode"""
     from .tools import VFSExporter
     
     vfs = get_vfs(args.config, args.db)
@@ -284,7 +284,7 @@ def cmd_export(args):
 
 
 def cmd_autolink(args):
-    """自动发现关系"""
+    """auto-discoverrelation"""
     from .tools import RelationBuilder
     
     vfs = get_vfs(args.config, args.db)
@@ -307,7 +307,7 @@ def cmd_autolink(args):
 
 
 def cmd_refresh(args):
-    """刷新 live 节点"""
+    """refresh live node"""
     vfs = get_vfs(args.config, args.db)
     
     if args.all:
@@ -335,7 +335,7 @@ def cmd_refresh(args):
             print(f"Permission denied: {e}", file=sys.stderr)
             return 1
     else:
-        # 列出过期节点
+        # listexpirednode
         nodes = vfs.list("/live", limit=1000)
         expired = [n for n in nodes if n.is_expired]
         
@@ -350,7 +350,7 @@ def cmd_refresh(args):
 
 
 def cmd_config(args):
-    """显示配置"""
+    """Show configuration"""
     vfs = get_vfs(args.config, args.db)
     
     if args.json:
@@ -374,7 +374,7 @@ def cmd_config(args):
 
 
 def cmd_retrieve(args):
-    """联动检索"""
+    """联动retrieve"""
     vfs = get_vfs(args.config, args.db)
     
     result = vfs.retrieve(
@@ -413,7 +413,7 @@ def cmd_retrieve(args):
 
 
 def cmd_synthesize(args):
-    """生成综合文档"""
+    """generate综合document"""
     vfs = get_vfs(args.config, args.db)
     
     doc = vfs.synthesize(
@@ -426,7 +426,7 @@ def cmd_synthesize(args):
 
 
 def cmd_memory_recall(args):
-    """Agent Memory 检索"""
+    """Agent Memory retrieve"""
     from .agent_memory import ScoringStrategy
     
     vfs = get_vfs(args.config, args.db)
@@ -445,11 +445,11 @@ def cmd_memory_recall(args):
 
 
 def cmd_memory_remember(args):
-    """写入 Agent Memory"""
+    """write Agent Memory"""
     vfs = get_vfs(args.config, args.db)
     memory = vfs.agent_memory(args.agent)
     
-    # 获取内容
+    # Get content
     if args.content:
         content = args.content
     elif args.file:
@@ -470,7 +470,7 @@ def cmd_memory_remember(args):
 
 
 def cmd_memory_stats(args):
-    """Agent Memory 统计"""
+    """Agent Memory statistics"""
     vfs = get_vfs(args.config, args.db)
     memory = vfs.agent_memory(args.agent)
     
@@ -588,7 +588,7 @@ def main():
     p_config = subparsers.add_parser("config", help="Show configuration")
     p_config.set_defaults(func=cmd_config)
     
-    # retrieve (联动检索)
+    # retrieve (联动retrieve)
     p_retrieve = subparsers.add_parser("retrieve", help="Linked retrieval")
     p_retrieve.add_argument("query", help="Search query")
     p_retrieve.add_argument("--limit", "-n", type=int, default=5)
@@ -596,7 +596,7 @@ def main():
     p_retrieve.add_argument("--no-graph", action="store_true", help="Disable graph expansion")
     p_retrieve.set_defaults(func=cmd_retrieve)
     
-    # synthesize (动态文档)
+    # synthesize (动态document)
     p_synth = subparsers.add_parser("synthesize", aliases=["synth"], help="Generate dynamic document")
     p_synth.add_argument("query", help="Query topic")
     p_synth.add_argument("--limit", "-n", type=int, default=5)

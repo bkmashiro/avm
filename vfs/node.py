@@ -1,5 +1,5 @@
 """
-vfs/node.py - VFS节点数据结构
+vfs/node.py - VFSnodedatastructure
 """
 
 from dataclasses import dataclass, field
@@ -11,14 +11,14 @@ import json
 
 
 class NodeType(Enum):
-    """节点类型"""
+    """node type"""
     FILE = "file"
     DIRECTORY = "dir"
     LINK = "link"  # 软链接
 
 
 class Permission(Enum):
-    """权限"""
+    """permission"""
     READ_ONLY = "ro"
     READ_WRITE = "rw"
 
@@ -26,13 +26,13 @@ class Permission(Enum):
 @dataclass
 class VFSNode:
     """
-    VFS节点
+    VFSnode
     
-    每个节点有：
-    - path: 虚拟路径 (e.g., /research/MSFT.md)
-    - content: 文件内容
-    - meta: 元数据（TTL、来源、更新时间等）
-    - node_type: 文件/目录/链接
+    eachnodehas：
+    - path: 虚拟path (e.g., /research/MSFT.md)
+    - content: filecontent
+    - meta: metadata（TTL、source、updatetime等）
+    - node_type: file/directory/链接
     """
     path: str
     content: str = ""
@@ -42,13 +42,13 @@ class VFSNode:
     updated_at: datetime = field(default_factory=datetime.utcnow)
     version: int = 1
     
-    # 权限由路径前缀决定
+    # permission由pathprefix决定
     WRITABLE_PREFIXES = ("/memory",)
     READONLY_PREFIXES = ("/research", "/live", "/links")
     
     @property
     def is_writable(self) -> bool:
-        """检查节点是否可写"""
+        """checknodewhetherwritable"""
         for prefix in self.WRITABLE_PREFIXES:
             if self.path.startswith(prefix):
                 return True
@@ -56,17 +56,17 @@ class VFSNode:
     
     @property
     def is_live(self) -> bool:
-        """检查是否为实时数据节点"""
+        """checkwhetherlive datanode"""
         return self.path.startswith("/live")
     
     @property
     def ttl_seconds(self) -> Optional[int]:
-        """获取TTL（仅live节点）"""
+        """getTTL（onlylivenode）"""
         return self.meta.get("ttl_seconds") if self.is_live else None
     
     @property
     def is_expired(self) -> bool:
-        """检查live节点是否过期"""
+        """checklivenodewhetherexpired"""
         if not self.is_live:
             return False
         ttl = self.ttl_seconds
@@ -77,11 +77,11 @@ class VFSNode:
     
     @property
     def content_hash(self) -> str:
-        """内容哈希（用于diff检测）"""
+        """contenthash（fordiff检测）"""
         return hashlib.sha256(self.content.encode()).hexdigest()[:16]
     
     def to_dict(self) -> Dict[str, Any]:
-        """转为字典"""
+        """转dict"""
         return {
             "path": self.path,
             "content": self.content,
@@ -94,7 +94,7 @@ class VFSNode:
     
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "VFSNode":
-        """从字典创建"""
+        """fromdictcreate"""
         return cls(
             path=data["path"],
             content=data.get("content", ""),
@@ -112,13 +112,13 @@ class VFSNode:
 @dataclass
 class NodeDiff:
     """
-    节点变更记录
+    nodechangerecord
     """
     node_path: str
     version: int
     old_hash: Optional[str]
     new_hash: str
-    diff_content: str  # unified diff 或完整新内容
+    diff_content: str  # unified diff 或complete新content
     changed_at: datetime = field(default_factory=datetime.utcnow)
     change_type: str = "update"  # create/update/delete
     

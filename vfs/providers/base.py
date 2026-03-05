@@ -1,5 +1,5 @@
 """
-vfs/providers/base.py - Provider基类
+vfs/providers/base.py - Provider base class
 """
 
 from abc import ABC, abstractmethod
@@ -12,7 +12,7 @@ from ..store import VFSStore
 
 class VFSProvider(ABC):
     """
-    数据提供者基类
+    Data provider base class
     """
     
     def __init__(self, store: VFSStore, prefix: str):
@@ -21,11 +21,11 @@ class VFSProvider(ABC):
     
     @abstractmethod
     def fetch(self, path: str) -> Optional[VFSNode]:
-        """从数据源获取数据"""
+        """Fetch data from source"""
         pass
     
     def get(self, path: str, force_refresh: bool = False) -> Optional[VFSNode]:
-        """获取节点（带缓存）"""
+        """Get node (with cache)"""
         if not path.startswith(self.prefix):
             return None
         
@@ -42,7 +42,7 @@ class VFSProvider(ABC):
         return node
     
     def refresh_all(self) -> int:
-        """刷新所有节点"""
+        """Refresh all nodes"""
         count = 0
         for node in self.store.list_nodes(self.prefix):
             refreshed = self.get(node.path, force_refresh=True)
@@ -52,7 +52,7 @@ class VFSProvider(ABC):
 
 
 class LiveProvider(VFSProvider):
-    """实时数据提供者（带TTL）"""
+    """Live data provider (with TTL)"""
     
     def __init__(self, store: VFSStore, prefix: str, ttl_seconds: int = 300):
         super().__init__(store, prefix)
@@ -73,7 +73,7 @@ class LiveProvider(VFSProvider):
 
 
 class StaticProvider(VFSProvider):
-    """静态数据提供者"""
+    """Static data provider"""
     
     def _make_node(self, path: str, content: str,
                    meta: Dict = None) -> VFSNode:

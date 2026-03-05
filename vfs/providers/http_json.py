@@ -1,7 +1,7 @@
 """
 vfs/providers/http_json.py - 通用 HTTP JSON Provider
 
-从 HTTP API 获取 JSON 数据并格式化为 Markdown
+Fetch JSON from HTTP API and format as Markdown
 """
 
 import json
@@ -18,11 +18,11 @@ class HttpJsonProvider(LiveProvider):
     """
     通用 HTTP JSON Provider
     
-    配置:
+    Config:
         base_url: API 基础 URL
-        token: Bearer token (可选)
-        headers: 自定义请求头 (可选)
-        path_mapping: 路径到 API endpoint 的映射 (可选)
+        token: Bearer token (optional)
+        headers: customrequest头 (optional)
+        path_mapping: pathto API endpoint 的mapping (optional)
     """
     
     def __init__(self, store: VFSStore, prefix: str, ttl_seconds: int = 60,
@@ -36,19 +36,19 @@ class HttpJsonProvider(LiveProvider):
         self.path_mapping = path_mapping or {}
     
     def _get_endpoint(self, path: str) -> str:
-        """将 VFS 路径转换为 API endpoint"""
-        # 移除前缀
+        """将 VFS pathconvert API endpoint"""
+        # removeprefix
         rel_path = path[len(self.prefix):].lstrip("/")
         
-        # 检查映射
+        # checkmapping
         if path in self.path_mapping:
             return self.path_mapping[path]
         
-        # 默认：直接使用路径
+        # default：directlyusepath
         return f"/{rel_path}".replace(".md", "")
     
     def _request(self, endpoint: str) -> Any:
-        """发送 HTTP 请求"""
+        """发送 HTTP request"""
         url = f"{self.base_url}{endpoint}"
         
         headers = {"User-Agent": "VFS/1.0"}
@@ -63,7 +63,7 @@ class HttpJsonProvider(LiveProvider):
             return json.loads(r.read())
     
     def _format_json_to_md(self, data: Any, title: str = "") -> str:
-        """将 JSON 数据格式化为 Markdown"""
+        """Format JSON data as Markdown"""
         lines = []
         
         if title:
@@ -83,7 +83,7 @@ class HttpJsonProvider(LiveProvider):
         elif isinstance(data, list):
             lines.append("| # | Value |")
             lines.append("|---|-------|")
-            for i, item in enumerate(data[:50]):  # 限制行数
+            for i, item in enumerate(data[:50]):  # limitline数
                 if isinstance(item, dict):
                     lines.append(f"| {i} | {json.dumps(item)} |")
                 else:
@@ -97,12 +97,12 @@ class HttpJsonProvider(LiveProvider):
         return "\n".join(lines)
     
     def fetch(self, path: str) -> Optional[VFSNode]:
-        """获取数据"""
+        """getdata"""
         try:
             endpoint = self._get_endpoint(path)
             data = self._request(endpoint)
             
-            # 格式化为 Markdown
+            # format化 Markdown
             title = path.split("/")[-1].replace(".md", "").replace("_", " ").title()
             content = self._format_json_to_md(data, title)
             

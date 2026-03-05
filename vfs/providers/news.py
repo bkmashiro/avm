@@ -1,7 +1,7 @@
 """
-vfs/providers/news.py - 新闻 Provider
+vfs/providers/news.py - news Provider
 
-从公开 RSS/API 获取财经新闻
+Fetch financial news from public RSS/API
 """
 
 import json
@@ -18,12 +18,12 @@ from ..store import VFSStore
 
 class NewsProvider(LiveProvider):
     """
-    财经新闻数据
+    financialnewsdata
     
-    路径:
-        /live/news/market.md       - 市场新闻
-        /live/news/AAPL.md         - 股票相关新闻
-        /live/news/crypto.md       - 加密货币新闻
+    path:
+        /live/news/market.md       - marketnews
+        /live/news/AAPL.md         - stockrelatednews
+        /live/news/crypto.md       - cryptocurrencynews
     """
     
     # RSS 源
@@ -60,7 +60,7 @@ class NewsProvider(LiveProvider):
         return None
     
     def _fetch_rss(self, url: str, limit: int = 10) -> List[Dict]:
-        """获取 RSS 内容"""
+        """Fetch RSS content"""
         try:
             req = urllib.request.Request(url, headers={
                 "User-Agent": "Mozilla/5.0 (compatible; VFS/1.0)",
@@ -77,7 +77,7 @@ class NewsProvider(LiveProvider):
                 pub_date = item.findtext("pubDate", "")
                 description = item.findtext("description", "")
                 
-                # 清理 description
+                # cleanup description
                 if description:
                     description = description[:200].replace("<", "&lt;").replace(">", "&gt;")
                 
@@ -93,7 +93,7 @@ class NewsProvider(LiveProvider):
             return []
     
     def _fetch_market_news(self) -> VFSNode:
-        """获取市场新闻"""
+        """getmarketnews"""
         all_items = []
         
         for source_name, url in self.RSS_SOURCES.get("market", []):
@@ -125,7 +125,7 @@ class NewsProvider(LiveProvider):
         )
     
     def _fetch_crypto_news(self) -> VFSNode:
-        """获取加密货币新闻"""
+        """getcryptocurrencynews"""
         all_items = []
         
         for source_name, url in self.RSS_SOURCES.get("crypto", []):
@@ -155,7 +155,7 @@ class NewsProvider(LiveProvider):
         )
     
     def _fetch_stock_news(self, symbol: str) -> VFSNode:
-        """获取股票相关新闻 (Yahoo Finance RSS)"""
+        """Fetch stock-related news (Yahoo Finance RSS)"""
         url = f"https://feeds.finance.yahoo.com/rss/2.0/headline?s={symbol}&region=US&lang=en-US"
         items = self._fetch_rss(url, limit=10)
         

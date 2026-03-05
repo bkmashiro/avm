@@ -1,7 +1,7 @@
 """
-vfs/providers/indicators.py - 技术指标 Provider
+vfs/providers/indicators.py - technical indicators Provider
 
-从 Yahoo Finance 获取数据，计算技术指标
+Fetch data from Yahoo Finance and calculate technical indicators
 """
 
 import json
@@ -16,14 +16,14 @@ from ..store import VFSStore
 
 class TechnicalIndicatorsProvider(LiveProvider):
     """
-    技术指标数据
+    technical indicatorsdata
     
-    路径:
-        /live/indicators/AAPL.md       - 单股票完整指标
+    path:
+        /live/indicators/AAPL.md       - 单stockcomplete指标
         /live/indicators/AAPL/rsi.md   - RSI
         /live/indicators/AAPL/macd.md  - MACD
-        /live/indicators/AAPL/ma.md    - 移动平均线
-        /live/indicators/AAPL/bb.md    - 布林带
+        /live/indicators/AAPL/ma.md    - moving average线
+        /live/indicators/AAPL/bb.md    - Bollinger Bands
     """
     
     def __init__(self, store: VFSStore, ttl_seconds: int = 300):
@@ -51,7 +51,7 @@ class TechnicalIndicatorsProvider(LiveProvider):
             )
     
     def _fetch_yahoo_data(self, symbol: str, days: int = 120) -> Dict[str, Any]:
-        """从 Yahoo Finance 获取历史数据"""
+        """Fetch historical data from Yahoo Finance"""
         end = int(datetime.now().timestamp())
         start = end - days * 86400
         
@@ -130,7 +130,7 @@ class TechnicalIndicatorsProvider(LiveProvider):
         
         macd_line = ema12 - ema26
         
-        # 计算 MACD 历史用于 Signal
+        # calculate MACD historyfor Signal
         macd_history = []
         for i in range(26, len(closes) + 1):
             e12 = self._calc_ema(closes[:i], 12)
@@ -149,7 +149,7 @@ class TechnicalIndicatorsProvider(LiveProvider):
         
         histogram = macd_line - signal
         
-        # 检测金叉/死叉
+        # 检测golden cross/death cross
         prev_macd = macd_history[-2] if len(macd_history) > 1 else None
         prev_hist = None
         if prev_macd and len(macd_history) > 2:
@@ -162,9 +162,9 @@ class TechnicalIndicatorsProvider(LiveProvider):
         cross = "none"
         if prev_hist is not None:
             if prev_hist < 0 and histogram > 0:
-                cross = "golden"  # 金叉
+                cross = "golden"  # golden cross
             elif prev_hist > 0 and histogram < 0:
-                cross = "death"   # 死叉
+                cross = "death"   # death cross
         
         return {
             "macd": macd_line,

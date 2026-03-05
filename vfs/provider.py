@@ -1,10 +1,10 @@
 """
-vfs/provider.py - 数据提供者
+vfs/provider.py - data provider
 
-Provider 负责从外部数据源获取数据，转换为 VFSNode。
-支持：
-- LiveProvider: 实时数据（带TTL缓存）
-- StaticProvider: 静态数据（手动更新）
+Providers fetch data from external sources and convert to VFSNode.
+Supports:
+- LiveProvider: Live data (with TTL cache)
+- StaticProvider: Static data (manual update)
 """
 
 from abc import ABC, abstractmethod
@@ -18,14 +18,14 @@ from .store import VFSStore
 
 class VFSProvider(ABC):
     """
-    数据提供者基类
+    Data provider base class
     """
     
     def __init__(self, store: VFSStore, prefix: str):
         """
         Args:
-            store: VFS存储
-            prefix: 路径前缀（如 /live/positions）
+            store: VFS storage
+            prefix: Path prefix (e.g. /live/positions)
         """
         self.store = store
         self.prefix = prefix
@@ -33,19 +33,19 @@ class VFSProvider(ABC):
     @abstractmethod
     def fetch(self, path: str) -> Optional[VFSNode]:
         """
-        从数据源获取数据
+        Fetch data from source
         
-        子类实现具体的数据获取逻辑
+        Subclass implements specific fetch logic
         """
         pass
     
     def get(self, path: str, force_refresh: bool = False) -> Optional[VFSNode]:
         """
-        获取节点（带缓存）
+        Get node (with cache)
         
-        1. 检查缓存
-        2. 如果未过期，返回缓存
-        3. 否则调用 fetch 刷新
+        1. Check cache
+        2. If not expired, return cached
+        3. Otherwise call fetch to refresh
         """
         if not path.startswith(self.prefix):
             return None
@@ -56,7 +56,7 @@ class VFSProvider(ABC):
             if not cached.is_expired:
                 return cached
         
-        # 刷新
+        # Refresh
         node = self.fetch(path)
         if node:
             self.store._put_node_internal(node, save_diff=True)
@@ -64,7 +64,7 @@ class VFSProvider(ABC):
         return node
     
     def refresh_all(self) -> int:
-        """刷新所有节点，返回刷新数量"""
+        """Refresh all nodes, return refresh count"""
         count = 0
         for node in self.store.list_nodes(self.prefix):
             refreshed = self.get(node.path, force_refresh=True)
@@ -75,11 +75,11 @@ class VFSProvider(ABC):
 
 class LiveProvider(VFSProvider):
     """
-    实时数据提供者
+    Live data provider
     
-    特点：
-    - 数据有 TTL
-    - 读取时自动刷新过期数据
+    Features:
+    - Data has TTL
+    - Auto-refresh expired data on read
     """
     
     def __init__(self, store: VFSStore, prefix: str, ttl_seconds: int = 300):
@@ -88,7 +88,7 @@ class LiveProvider(VFSProvider):
     
     def _make_node(self, path: str, content: str, 
                    meta: Dict = None) -> VFSNode:
-        """创建带TTL的节点"""
+        """Create node with TTL"""
         node_meta = meta or {}
         node_meta["ttl_seconds"] = self.ttl_seconds
         node_meta["provider"] = self.__class__.__name__
@@ -103,16 +103,16 @@ class LiveProvider(VFSProvider):
 
 class StaticProvider(VFSProvider):
     """
-    静态数据提供者
+    Static data provider
     
-    特点：
-    - 数据长期有效
-    - 需要手动触发更新
+    Features:
+    - Data is long-lived
+    - Needs manual trigger to update
     """
     
     def _make_node(self, path: str, content: str,
                    meta: Dict = None) -> VFSNode:
-        """创建静态节点"""
+        """Create static node"""
         node_meta = meta or {}
         node_meta["provider"] = self.__class__.__name__
         
@@ -124,14 +124,14 @@ class StaticProvider(VFSProvider):
         )
 
 
-# ─── 具体实现 ─────────────────────────────────────────────
+# ─── Implementations ─────────────────────────────────────────────
 
 
 class AlpacaPositionsProvider(LiveProvider):
     """
-    Alpaca 持仓数据提供者
+    Alpaca positions provider
     
-    路径: /live/positions.md
+    Path: /live/positions.md
     """
     
     def __init__(self, store: VFSStore, 
@@ -144,7 +144,7 @@ class AlpacaPositionsProvider(LiveProvider):
         self.base_url = base_url
     
     def _api_request(self, endpoint: str) -> Any:
-        """调用Alpaca API"""
+        """Call Alpaca API"""
         import urllib.request
         
         req = urllib.request.Request(
@@ -159,7 +159,7 @@ class AlpacaPositionsProvider(LiveProvider):
             return json.loads(r.read())
     
     def fetch(self, path: str) -> Optional[VFSNode]:
-        """获取持仓数据"""
+        """Get position data"""
         try:
             if path == "/live/positions.md":
                 return self._fetch_positions()
@@ -170,7 +170,7 @@ class AlpacaPositionsProvider(LiveProvider):
                 symbol = path.split("/")[-1].replace(".md", "")
                 return self._fetch_position(symbol)
         except Exception as e:
-            # 返回错误节点
+            # Return error node
             return self._make_node(
                 path,
                 f"# Error\n\nFailed to fetch: {e}",
@@ -180,7 +180,7 @@ class AlpacaPositionsProvider(LiveProvider):
         return None
     
     def _fetch_positions(self) -> VFSNode:
-        """获取所有持仓"""
+        """Get all positions"""
         positions = self._api_request("/v2/positions")
         account = self._api_request("/v2/account")
         
@@ -229,7 +229,7 @@ class AlpacaPositionsProvider(LiveProvider):
         )
     
     def _fetch_account(self) -> VFSNode:
-        """获取账户信息"""
+        """Get account info"""
         account = self._api_request("/v2/account")
         
         lines = [
@@ -253,7 +253,7 @@ class AlpacaPositionsProvider(LiveProvider):
         )
     
     def _fetch_position(self, symbol: str) -> VFSNode:
-        """获取单个持仓"""
+        """Get single position"""
         try:
             pos = self._api_request(f"/v2/positions/{symbol}")
         except Exception:
@@ -290,21 +290,21 @@ class AlpacaPositionsProvider(LiveProvider):
 
 class MemoryProvider(VFSProvider):
     """
-    Bot 记忆区提供者
+    Bot memory provider
     
-    路径: /memory/*
-    可读写
+    Path: /memory/*
+    Read-write
     """
     
     def __init__(self, store: VFSStore):
         super().__init__(store, "/memory")
     
     def fetch(self, path: str) -> Optional[VFSNode]:
-        """Memory 区不需要外部 fetch，直接从 store 读取"""
+        """Memory area reads directly from store"""
         return self.store.get_node(path)
     
     def write(self, path: str, content: str, meta: Dict = None) -> VFSNode:
-        """写入记忆"""
+        """Write memory"""
         if not path.startswith("/memory"):
             raise PermissionError(f"Cannot write to {path}")
         

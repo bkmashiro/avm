@@ -1,7 +1,7 @@
 """
-vfs/providers/watchlist.py - 自选股列表 Provider
+vfs/providers/watchlist.py - watchlistcolumntable Provider
 
-综合多个数据源，生成自选股概览
+综合multipledata源，generatewatchlist概览
 """
 
 from datetime import datetime
@@ -15,16 +15,16 @@ from ..store import VFSStore
 
 class WatchlistProvider(LiveProvider):
     """
-    自选股概览
+    watchlist概览
     
-    路径:
-        /live/watchlist.md              - 默认列表
-        /live/watchlist/tech.md         - 科技股
-        /live/watchlist/value.md        - 价值股
-        /live/watchlist/custom.md       - 自定义
+    path:
+        /live/watchlist.md              - defaultcolumntable
+        /live/watchlist/tech.md         - tech stocks
+        /live/watchlist/value.md        - value stocks
+        /live/watchlist/custom.md       - custom
     """
     
-    # 预设自选股
+    # 预设watchlist
     WATCHLISTS = {
         "default": ["SPY", "QQQ", "AAPL", "MSFT", "NVDA", "TSLA", "AMZN", "GOOGL"],
         "tech": ["AAPL", "MSFT", "NVDA", "AMD", "INTC", "AVGO", "QCOM", "TSM"],
@@ -61,7 +61,7 @@ class WatchlistProvider(LiveProvider):
     
     def _fetch_watchlist(self, path: str, name: str, 
                          symbols: List[str]) -> VFSNode:
-        """获取自选股数据"""
+        """getwatchlistdata"""
         lines = [
             f"# Watchlist: {name.title()}",
             "",
@@ -86,7 +86,7 @@ class WatchlistProvider(LiveProvider):
                 sma20 = self.indicators_provider._calc_sma(closes, 20)
                 sma50 = self.indicators_provider._calc_sma(closes, 50)
                 
-                # 趋势判断
+                # trend判断
                 trend = "—"
                 if sma20 and sma50:
                     trend = "🟢" if sma20 > sma50 else "🔴"
@@ -95,14 +95,14 @@ class WatchlistProvider(LiveProvider):
                 signals = []
                 if rsi:
                     if rsi < 30:
-                        signals.append("超卖")
+                        signals.append("oversold")
                     elif rsi > 70:
-                        signals.append("超买")
+                        signals.append("overbought")
                 
                 if macd and macd["cross"] == "golden":
-                    signals.append("金叉")
+                    signals.append("golden cross")
                 elif macd and macd["cross"] == "death":
-                    signals.append("死叉")
+                    signals.append("death cross")
                 
                 signal_str = "/".join(signals) if signals else "—"
                 macd_emoji = ""
@@ -129,17 +129,17 @@ class WatchlistProvider(LiveProvider):
                 lines.append(f"| {symbol} | Error | — | — | — | {str(e)[:20]} |")
                 symbol_data.append({"symbol": symbol, "error": str(e)})
         
-        # 添加详细分析
+        # adddetailedanalysis
         lines.extend([
             "",
             "## Alerts",
             "",
         ])
         
-        oversold = [s for s in symbol_data if "超卖" in s.get("signals", [])]
-        overbought = [s for s in symbol_data if "超买" in s.get("signals", [])]
-        golden = [s for s in symbol_data if "金叉" in s.get("signals", [])]
-        death = [s for s in symbol_data if "死叉" in s.get("signals", [])]
+        oversold = [s for s in symbol_data if "oversold" in s.get("signals", [])]
+        overbought = [s for s in symbol_data if "overbought" in s.get("signals", [])]
+        golden = [s for s in symbol_data if "golden cross" in s.get("signals", [])]
+        death = [s for s in symbol_data if "death cross" in s.get("signals", [])]
         
         if oversold:
             lines.append(f"🟢 **Oversold:** {', '.join(s['symbol'] for s in oversold)}")
@@ -164,5 +164,5 @@ class WatchlistProvider(LiveProvider):
         )
     
     def set_custom_watchlist(self, symbols: List[str]):
-        """设置自定义自选股"""
+        """settingscustomwatchlist"""
         self.custom_symbols = symbols

@@ -1,7 +1,7 @@
 """
 vfs/core.py - VFS 核心类
 
-配置驱动的虚拟文件系统
+Config-driven virtual filesystem
 """
 
 from typing import Dict, List, Optional, Type, Callable, Any, Tuple
@@ -15,9 +15,9 @@ from .graph import EdgeType
 
 class ProviderRegistry:
     """
-    Provider 注册表
+    Provider registertable
     
-    管理 provider type name -> provider class 的映射
+    管理 provider type name -> provider class 的mapping
     """
     
     def __init__(self):
@@ -27,12 +27,12 @@ class ProviderRegistry:
     def register(self, name: str, provider_class: Type = None, 
                  factory: Callable = None):
         """
-        注册 provider 类型
+        register provider type
         
         Args:
-            name: 类型名称
+            name: type名称
             provider_class: Provider 类
-            factory: 工厂函数 (store, spec) -> Provider
+            factory: 工厂function (store, spec) -> Provider
         """
         if provider_class:
             self._types[name] = provider_class
@@ -41,7 +41,7 @@ class ProviderRegistry:
     
     def create(self, name: str, store: VFSStore, 
                spec: ProviderSpec) -> Optional[Any]:
-        """创建 provider 实例"""
+        """create provider instance"""
         if name in self._factories:
             return self._factories[name](store, spec)
         
@@ -52,68 +52,68 @@ class ProviderRegistry:
         return None
     
     def list_types(self) -> List[str]:
-        """列出所有已注册的类型"""
+        """listallalreadyregister的type"""
         return list(set(self._types.keys()) | set(self._factories.keys()))
 
 
-# 全局注册表
+# 全局registertable
 _registry = ProviderRegistry()
 
 
 def register_provider_type(name: str, provider_class: Type = None,
                            factory: Callable = None):
-    """注册 provider 类型（全局）"""
+    """register provider type（全局）"""
     _registry.register(name, provider_class, factory)
 
 
 class VFS:
     """
-    虚拟文件系统
+    虚拟file系统
     
-    配置驱动，支持：
-    - 动态 provider 注册
-    - 可配置的权限规则
-    - TTL 缓存
-    - 关系图
+    Config-driven, supports:
+    - 动态 provider register
+    - Configurable permission rules
+    - TTL cache
+    - relationgraph
     """
     
     def __init__(self, config: VFSConfig = None, config_path: str = None):
         """
         Args:
-            config: VFSConfig 实例
-            config_path: 配置文件路径
+            config: VFSConfig instance
+            config_path: Configuration file path
         """
         if config:
             self.config = config
         else:
             self.config = load_config(config_path)
         
-        # 初始化存储
+        # initializestorage
         db_path = self.config.db_path or None
         self.store = VFSStore(db_path)
         
-        # Provider 实例缓存
+        # Provider instancecache
         self._providers: Dict[str, Any] = {}
         
-        # 使用全局注册表
+        # use全局registertable
         self._registry = _registry
         
-        # 注册内置 provider 类型
+        # registerbuilt-in provider type
         self._register_builtin_providers()
     
     def _register_builtin_providers(self):
-        """注册内置 provider"""
+        """registerbuilt-in provider"""
         from .providers import (
             AlpacaPositionsProvider, AlpacaOrdersProvider,
             TechnicalIndicatorsProvider, NewsProvider,
             WatchlistProvider, MemoryProvider,
         )
         
-        # Alpaca (需要配置)
+        # Alpaca (requires config)
         def create_alpaca_positions(store, spec):
             config = spec.config
             if not config.get("api_key"):
-                # 尝试从 env_file 加载
+                # tryfrom env_file load
                 env_file = config.get("env_file", "")
                 if env_file:
                     env_path = Path(env_file).expanduser()
@@ -165,7 +165,7 @@ class VFS:
         self._registry.register("alpaca_positions", factory=create_alpaca_positions)
         self._registry.register("alpaca_orders", factory=create_alpaca_orders)
         
-        # 无需配置的 providers
+        # Providers that need no config
         self._registry.register("technical_indicators", TechnicalIndicatorsProvider)
         self._registry.register("news", NewsProvider)
         self._registry.register("watchlist", WatchlistProvider)
@@ -173,16 +173,16 @@ class VFS:
     
     def register_provider_type(self, name: str, provider_class: Type = None,
                                factory: Callable = None):
-        """注册自定义 provider 类型"""
+        """registercustom provider type"""
         self._registry.register(name, provider_class, factory)
     
     def _get_provider(self, path: str) -> Optional[Any]:
-        """获取或创建路径对应的 provider"""
+        """Get or create provider for path"""
         spec = self.config.get_provider_spec(path)
         if not spec:
             return None
         
-        # 缓存 key
+        # cache key
         cache_key = f"{spec.type}:{spec.pattern}"
         
         if cache_key not in self._providers:
@@ -192,16 +192,16 @@ class VFS:
         
         return self._providers.get(cache_key)
     
-    # ─── 读写接口 ─────────────────────────────────────────
+    # ─── 读写interface ─────────────────────────────────────────
     
     def read(self, path: str, force_refresh: bool = False) -> Optional[VFSNode]:
         """
-        读取节点
+        readnode
         
-        1. 检查读权限
+        1. check读permission
         2. 查找 provider
-        3. 通过 provider 获取（带 TTL 缓存）
-        4. 或直接从 store 读取
+        3. Fetch via provider (with TTL cache)
+        4. 或directlyfrom store read
         """
         if not self.config.check_permission(path, "read"):
             raise PermissionError(f"No read permission for {path}")
@@ -215,10 +215,10 @@ class VFS:
     def write(self, path: str, content: str, 
               meta: Dict = None) -> VFSNode:
         """
-        写入节点
+        writenode
         
-        1. 检查写权限
-        2. 创建或更新节点
+        1. check写permission
+        2. create或updatenode
         """
         if not self.config.check_permission(path, "write"):
             raise PermissionError(f"No write permission for {path}")
@@ -233,61 +233,61 @@ class VFS:
         return self.store.put_node(node)
     
     def delete(self, path: str) -> bool:
-        """删除节点"""
+        """deletenode"""
         if not self.config.check_permission(path, "write"):
             raise PermissionError(f"No write permission for {path}")
         
         return self.store.delete_node(path)
     
     def list(self, prefix: str = "/", limit: int = 100) -> List[VFSNode]:
-        """列出节点"""
+        """listnode"""
         return self.store.list_nodes(prefix, limit)
     
-    # ─── 搜索 ─────────────────────────────────────────────
+    # ─── search ─────────────────────────────────────────────
     
     def search(self, query: str, limit: int = 10) -> List[Tuple[VFSNode, float]]:
-        """全文搜索"""
+        """full-textsearch"""
         return self.store.search(query, limit)
     
-    # ─── 关系图 ─────────────────────────────────────────────
+    # ─── relationgraph ─────────────────────────────────────────────
     
     def link(self, source: str, target: str,
              edge_type: EdgeType = EdgeType.RELATED,
              weight: float = 1.0):
-        """添加关系"""
+        """addrelation"""
         return self.store.add_edge(source, target, edge_type, weight)
     
     def links(self, path: str, direction: str = "both") -> List:
-        """获取关系"""
+        """Get relations"""
         return self.store.get_links(path, direction)
     
-    # ─── 历史 ─────────────────────────────────────────────
+    # ─── history ─────────────────────────────────────────────
     
     def history(self, path: str, limit: int = 10):
-        """获取变更历史"""
+        """Get change history"""
         return self.store.get_history(path, limit)
     
-    # ─── 统计 ─────────────────────────────────────────────
+    # ─── statistics ─────────────────────────────────────────────
     
     def stats(self) -> Dict:
-        """存储统计"""
+        """storagestatistics"""
         return self.store.stats()
     
-    # ─── 联动检索 ─────────────────────────────────────────
+    # ─── 联动retrieve ─────────────────────────────────────────
     
     def retrieve(self, query: str, k: int = 5,
                  expand_graph: bool = True,
                  graph_depth: int = 1) -> "RetrievalResult":
         """
-        联动检索
+        联动retrieve
         
-        1. 语义搜索 (如果有 embedding)
-        2. FTS5 全文搜索
-        3. 图扩展
+        1. semanticsearch (ifhas embedding)
+        2. FTS5 full-textsearch
+        3. graphextend
         """
         from .retrieval import Retriever, RetrievalResult
         
-        # 获取或创建 embedding store
+        # Get or create embedding store
         embedding_store = getattr(self, '_embedding_store', None)
         
         retriever = Retriever(self.store, embedding_store)
@@ -300,12 +300,12 @@ class VFS:
     def synthesize(self, query: str, k: int = 5,
                    title: str = None) -> str:
         """
-        动态生成综合文档
+        动态generate综合document
         
-        一行调用:
-            vfs.synthesize("NVDA风险分析")
+        一linecall:
+            vfs.synthesize("NVDA风险analysis")
         
-        Returns: Markdown 格式的综合文档
+        Returns: Markdown format的综合document
         """
         from .retrieval import Retriever, DocumentSynthesizer
         
@@ -321,11 +321,11 @@ class VFS:
     def enable_embedding(self, backend: "EmbeddingBackend" = None,
                          model: str = "text-embedding-3-small"):
         """
-        启用语义搜索
+        enablesemanticsearch
         
         Args:
-            backend: 自定义 embedding 后端
-            model: OpenAI 模型名称（如果不提供 backend）
+            backend: custom embedding 后端
+            model: OpenAI 模型名称（if不提供 backend）
         """
         from .embedding import EmbeddingStore, OpenAIEmbedding
         
@@ -336,7 +336,7 @@ class VFS:
         return self._embedding_store
     
     def embed_all(self, prefix: str = "/") -> int:
-        """为所有节点生成 embedding"""
+        """allnodegenerate embedding"""
         if not hasattr(self, '_embedding_store'):
             raise RuntimeError("Call enable_embedding() first")
         
@@ -347,14 +347,14 @@ class VFS:
     def agent_memory(self, agent_id: str, 
                      config: Dict = None) -> "AgentMemory":
         """
-        获取 Agent Memory 实例
+        Get Agent Memory instance
         
         Args:
             agent_id: Agent 标识
-            config: 可选配置
+            config: Optional configuration
         
         Returns:
-            AgentMemory 实例
+            AgentMemory instance
         """
         from .agent_memory import AgentMemory, MemoryConfig
         
@@ -368,11 +368,11 @@ class VFS:
     
     def load_agents(self, config_path: str = None, config_dict: Dict = None):
         """
-        加载多 agent 配置
+        Load multi-agent configuration
         
         Args:
-            config_path: YAML 配置文件路径
-            config_dict: 配置字典
+            config_path: YAML Configuration file path
+            config_dict: Configuration dictionary
         """
         from .multi_agent import AgentRegistry, AuditLog, VersionedMemory
         
@@ -389,7 +389,7 @@ class VFS:
             self._agent_registry.load_from_dict(config_dict)
     
     def get_agent_config(self, agent_id: str):
-        """获取 agent 配置"""
+        """Get agent configuration"""
         if not hasattr(self, '_agent_registry'):
             from .multi_agent import AgentRegistry
             self._agent_registry = AgentRegistry()
@@ -398,17 +398,17 @@ class VFS:
     
     def audit_log(self, agent_id: str = None, path_prefix: str = None,
                   limit: int = 100) -> List[Dict]:
-        """查询审计日志"""
+        """queryauditlog"""
         if not hasattr(self, '_audit_log'):
             from .multi_agent import AuditLog
             self._audit_log = AuditLog(self.store)
         
         return self._audit_log.query(agent_id, path_prefix, limit=limit)
     
-    # ─── 高级功能 ─────────────────────────────────────────
+    # ─── 高级features ─────────────────────────────────────────
     
     def subscribe(self, pattern: str, callback) -> str:
-        """订阅路径变化"""
+        """subscribepath变化"""
         from .advanced import SubscriptionManager
         
         if not hasattr(self, '_subscription_manager'):
@@ -417,7 +417,7 @@ class VFS:
         return self._subscription_manager.subscribe(pattern, callback)
     
     def _notify_subscribers(self, path: str, event_type: str, agent_id: str = None):
-        """通知订阅者（内部方法）"""
+        """notifysubscribe者（internalmethod）"""
         if hasattr(self, '_subscription_manager'):
             from .advanced import MemoryEvent, EventType
             
@@ -433,7 +433,7 @@ class VFS:
                    after: str = None,
                    before: str = None,
                    limit: int = 100) -> List[VFSNode]:
-        """时间范围查询"""
+        """timerangequery"""
         from .advanced import TimeQuery
         from datetime import datetime
         
@@ -452,11 +452,11 @@ class VFS:
     
     def sync(self, target: str, prefix: str = "/memory") -> Dict[str, int]:
         """
-        同步到远程
+        sync to远程
         
         Args:
-            target: 目录路径或 s3://bucket/prefix
-            prefix: 要同步的路径前缀
+            target: directorypath或 s3://bucket/prefix
+            prefix: 要sync的pathprefix
         """
         from .advanced import SyncManager
         
@@ -473,21 +473,21 @@ class VFS:
             return sync_mgr.sync_to_directory(target, prefix)
     
     def snapshot(self, name: str = None) -> str:
-        """创建快照"""
+        """createsnapshot"""
         from .advanced import ExportManager
         
         export_mgr = ExportManager(self.store)
         return export_mgr.snapshot(name)
     
     def list_snapshots(self) -> List[Dict]:
-        """列出快照"""
+        """listsnapshot"""
         from .advanced import ExportManager
         
         export_mgr = ExportManager(self.store)
         return export_mgr.list_snapshots()
     
     def restore_snapshot(self, name: str) -> int:
-        """恢复快照"""
+        """restoresnapshot"""
         from .advanced import ExportManager
         
         export_mgr = ExportManager(self.store)
@@ -497,10 +497,10 @@ class VFS:
     
     def init_permissions(self, config_dict: Dict = None):
         """
-        初始化 Linux 风格权限系统
+        initialize Linux 风格permission系统
         
         Args:
-            config_dict: 用户/组配置
+            config_dict: User/group configuration
         """
         from .permissions import UserRegistry, PermissionManager, APIKeyManager
         
@@ -513,10 +513,10 @@ class VFS:
     
     def authenticate(self, api_key: str) -> Optional["User"]:
         """
-        通过 API Key 认证
+        via API Key auth
         
         Returns:
-            User 对象，或 None
+            User object，或 None
         """
         if not hasattr(self, '_user_registry'):
             self.init_permissions()
@@ -525,7 +525,7 @@ class VFS:
     
     def create_user(self, name: str, groups: List[str] = None,
                     capabilities: List[str] = None) -> "User":
-        """创建用户"""
+        """create用户"""
         if not hasattr(self, '_user_registry'):
             self.init_permissions()
         
@@ -535,7 +535,7 @@ class VFS:
         return self._user_registry.create_user(name, groups, caps)
     
     def get_user(self, name: str) -> Optional["User"]:
-        """获取用户"""
+        """Get user"""
         if not hasattr(self, '_user_registry'):
             return None
         return self._user_registry.get_user(name)
@@ -543,24 +543,24 @@ class VFS:
     def check_permission(self, user: "User", path: str, 
                          action: str = "read") -> bool:
         """
-        检查用户权限
+        check用户permission
         
         Args:
-            user: 用户对象
-            path: 路径
+            user: 用户object
+            path: path
             action: read/write/delete/search
         """
         if not hasattr(self, '_perm_manager'):
-            return True  # 没有初始化权限系统则允许
+            return True  # 没hasinitializepermission系统则allow
         
         from .permissions import NodeOwnership
         
-        # 获取节点的所有权信息
+        # Get node ownership info
         node = self.store.get_node(path)
         if node:
             ownership = NodeOwnership.from_meta(node.meta)
         else:
-            # 默认权限
+            # defaultpermission
             ownership = NodeOwnership(owner="root", group="root", mode=0o644)
         
         if action == "read":
@@ -575,7 +575,7 @@ class VFS:
         return False
     
     def sudo(self, user: "User", duration_minutes: int = 5) -> bool:
-        """临时提权"""
+        """temporaryelevate privileges"""
         if not hasattr(self, '_perm_manager'):
             return False
         return self._perm_manager.sudo(user, duration_minutes)
@@ -585,13 +585,13 @@ class VFS:
                        actions: List[str] = None,
                        expires_days: int = None) -> str:
         """
-        创建 API Key（用于 skill 鉴权）
+        create API Key（for skill authentication）
         
         Args:
             user: 用户
-            paths: 允许的路径（支持通配符）
-            actions: 允许的操作
-            expires_days: 过期天数
+            paths: allow的path（supportswildcard）
+            actions: allow的操作
+            expires_days: expired天数
         """
         if not hasattr(self, '_api_key_manager'):
             self.init_permissions()

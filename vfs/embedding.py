@@ -1,7 +1,7 @@
 """
-vfs/embedding.py - Embedding 存储与语义搜索
+vfs/embedding.py - Embedding storage and semantic search
 
-支持多种 embedding 后端:
+Supports multiple embedding backends:
 - OpenAI (text-embedding-3-small)
 - Local (sentence-transformers)
 - Custom
@@ -20,21 +20,21 @@ from .node import VFSNode
 
 
 class EmbeddingBackend(ABC):
-    """Embedding 后端基类"""
+    """Embedding backend base class"""
     
     @property
     @abstractmethod
     def dimension(self) -> int:
-        """向量维度"""
+        """Vector dimensions"""
         pass
     
     @abstractmethod
     def embed(self, text: str) -> List[float]:
-        """生成单个文本的 embedding"""
+        """Generate embedding for single text"""
         pass
     
     def embed_batch(self, texts: List[str]) -> List[List[float]]:
-        """批量生成 embedding（默认逐个调用）"""
+        """Batch generate embeddings (default: one by one)"""
         return [self.embed(t) for t in texts]
 
 
@@ -65,7 +65,7 @@ class OpenAIEmbedding(EmbeddingBackend):
         import urllib.request
         
         data = json.dumps({
-            "input": text[:8000],  # 截断
+            "input": text[:8000],  # truncate
             "model": self.model,
         }).encode()
         
@@ -103,16 +103,16 @@ class OpenAIEmbedding(EmbeddingBackend):
         with urllib.request.urlopen(req, timeout=60) as r:
             result = json.loads(r.read())
         
-        # 按 index 排序
+        # Sort by index
         embeddings = sorted(result["data"], key=lambda x: x["index"])
         return [e["embedding"] for e in embeddings]
 
 
 class LocalEmbedding(EmbeddingBackend):
     """
-    本地 Embedding (sentence-transformers)
+    Local embedding (sentence-transformers)
     
-    需要安装: pip install sentence-transformers
+    Requires: pip install sentence-transformers
     """
     
     def __init__(self, model: str = "all-MiniLM-L6-v2"):
@@ -143,9 +143,9 @@ class LocalEmbedding(EmbeddingBackend):
 
 class EmbeddingStore:
     """
-    Embedding 存储
+    Embedding storage
     
-    使用 SQLite 存储向量，支持余弦相似度搜索
+    Uses SQLite for vectors, supports cosine similarity search
     """
     
     def __init__(self, store: VFSStore, backend: EmbeddingBackend):
@@ -154,7 +154,7 @@ class EmbeddingStore:
         self._init_table()
     
     def _init_table(self):
-        """初始化向量表"""
+        """initializevectortable"""
         with self.store._conn() as conn:
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS embeddings (
@@ -167,27 +167,27 @@ class EmbeddingStore:
             """)
     
     def _serialize_vector(self, vec: List[float]) -> bytes:
-        """序列化向量为 bytes"""
+        """serializevector bytes"""
         return struct.pack(f'{len(vec)}f', *vec)
     
     def _deserialize_vector(self, data: bytes) -> List[float]:
-        """反序列化 bytes 为向量"""
+        """deserialize bytes vector"""
         count = len(data) // 4  # float = 4 bytes
         return list(struct.unpack(f'{count}f', data))
     
     def _content_hash(self, content: str) -> str:
-        """计算内容哈希"""
+        """calculatecontenthash"""
         return hashlib.sha256(content.encode()).hexdigest()[:16]
     
     def embed_node(self, node: VFSNode, force: bool = False) -> bool:
         """
-        为节点生成 embedding
+        nodegenerate embedding
         
-        Returns: 是否实际生成了新的 embedding
+        Returns: whether actuallygenerate了新的 embedding
         """
         content_hash = self._content_hash(node.content)
         
-        # 检查是否需要更新
+        # checkwhetherrequiresupdate
         if not force:
             with self.store._conn() as conn:
                 row = conn.execute(
@@ -195,14 +195,14 @@ class EmbeddingStore:
                     (node.path,)
                 ).fetchone()
                 if row and row[0] == content_hash:
-                    return False  # 已存在且内容未变
+                    return False  # already存在且contentunchanged
         
-        # 生成 embedding
-        # 使用标题 + 内容前2000字
+        # generate embedding
+        # usetitle + contentfirst2000chars
         text = f"{node.path}\n\n{node.content[:2000]}"
         vector = self.backend.embed(text)
         
-        # 存储
+        # storage
         with self.store._conn() as conn:
             conn.execute("""
                 INSERT OR REPLACE INTO embeddings 
@@ -219,7 +219,7 @@ class EmbeddingStore:
         return True
     
     def embed_all(self, prefix: str = "/", limit: int = 1000) -> int:
-        """为所有节点生成 embedding"""
+        """allnodegenerate embedding"""
         nodes = self.store.list_nodes(prefix, limit)
         count = 0
         
@@ -232,14 +232,14 @@ class EmbeddingStore:
     def search(self, query: str, k: int = 5, 
                prefix: str = None) -> List[Tuple[VFSNode, float]]:
         """
-        语义搜索
+        semanticsearch
         
         Returns: [(node, similarity), ...]
         """
-        # 生成查询向量
+        # generatequeryvector
         query_vec = self.backend.embed(query)
         
-        # 获取所有向量并计算相似度
+        # getallvector并calculatesimilarity
         results = []
         
         with self.store._conn() as conn:
@@ -254,15 +254,15 @@ class EmbeddingStore:
                 path = row[0]
                 vec = self._deserialize_vector(row[1])
                 
-                # 余弦相似度
+                # cosinesimilarity
                 similarity = self._cosine_similarity(query_vec, vec)
                 results.append((path, similarity))
         
-        # 排序取 top-k
+        # sort取 top-k
         results.sort(key=lambda x: x[1], reverse=True)
         top_k = results[:k]
         
-        # 获取完整节点
+        # getcompletenode
         final = []
         for path, sim in top_k:
             node = self.store.get_node(path)
@@ -272,7 +272,7 @@ class EmbeddingStore:
         return final
     
     def _cosine_similarity(self, a: List[float], b: List[float]) -> float:
-        """计算余弦相似度"""
+        """calculatecosinesimilarity"""
         dot = sum(x * y for x, y in zip(a, b))
         norm_a = sum(x * x for x in a) ** 0.5
         norm_b = sum(x * x for x in b) ** 0.5
@@ -283,7 +283,7 @@ class EmbeddingStore:
         return dot / (norm_a * norm_b)
     
     def stats(self) -> Dict[str, Any]:
-        """统计信息"""
+        """statisticsinfo"""
         with self.store._conn() as conn:
             count = conn.execute("SELECT COUNT(*) FROM embeddings").fetchone()[0]
             

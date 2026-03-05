@@ -1,10 +1,10 @@
 """
-vfs/retrieval.py - 联动检索与动态文档构建
+vfs/retrieval.py - 联动retrieve与动态documentbuild
 
-功能:
-1. 语义搜索 (embedding)
-2. 图扩展 (关联节点)
-3. 动态文档合成
+features:
+1. semanticsearch (embedding)
+2. graphextend (relatednode)
+3. 动态document合成
 """
 
 from dataclasses import dataclass, field
@@ -19,7 +19,7 @@ from .embedding import EmbeddingStore, EmbeddingBackend
 
 @dataclass
 class RetrievalResult:
-    """检索结果"""
+    """retrieveresult"""
     query: str
     nodes: List[VFSNode]
     scores: Dict[str, float]  # path -> relevance score
@@ -39,7 +39,7 @@ class RetrievalResult:
 
 @dataclass
 class SynthesizedDocument:
-    """动态合成的文档"""
+    """动态合成的document"""
     title: str
     content: str
     sections: List[Dict[str, Any]]
@@ -52,13 +52,13 @@ class SynthesizedDocument:
 
 class Retriever:
     """
-    联动检索器
+    联动retrieve器
     
-    支持:
-    - 语义搜索 (需要 embedding)
-    - FTS5 全文搜索 (fallback)
-    - 图扩展
-    - 结果融合
+    supports:
+    - semanticsearch (requires embedding)
+    - FTS5 full-textsearch (fallback)
+    - graphextend
+    - resultfusion
     """
     
     def __init__(self, store: VFSStore, 
@@ -72,21 +72,21 @@ class Retriever:
                  graph_depth: int = 1,
                  prefix: str = None) -> RetrievalResult:
         """
-        联动检索
+        联动retrieve
         
         Args:
-            query: 查询文本
-            k: 返回数量
-            expand_graph: 是否扩展关系图
-            graph_depth: 图扩展深度
-            prefix: 路径前缀过滤
+            query: query文本
+            k: returncount
+            expand_graph: whetherextendrelationgraph
+            graph_depth: graphextend深度
+            prefix: pathprefixfilter
         """
         nodes = []
         scores = {}
         sources = {}
         seen_paths: Set[str] = set()
         
-        # 1. 语义搜索 (如果有 embedding)
+        # 1. semanticsearch (ifhas embedding)
         if self.embedding_store:
             semantic_results = self.embedding_store.search(query, k=k, prefix=prefix)
             for node, score in semantic_results:
@@ -96,7 +96,7 @@ class Retriever:
                     sources[node.path] = "semantic"
                     seen_paths.add(node.path)
         
-        # 2. FTS5 全文搜索 (补充或 fallback)
+        # 2. FTS5 full-textsearch (supplement或 fallback)
         fts_results = self.store.search(query, limit=k)
         for node, score in fts_results:
             if node.path not in seen_paths:
@@ -106,7 +106,7 @@ class Retriever:
                 sources[node.path] = "fts"
                 seen_paths.add(node.path)
         
-        # 3. 图扩展
+        # 3. graphextend
         graph_edges = []
         if expand_graph and nodes:
             expanded = self._expand_graph(
@@ -120,7 +120,7 @@ class Retriever:
                     node = self.store.get_node(path)
                     if node:
                         nodes.append(node)
-                        # 图扩展的 score 衰减
+                        # graphextend的 score decay
                         scores[path] = edge_info["score"] * 0.5
                         sources[path] = "graph"
                         seen_paths.add(path)
@@ -130,12 +130,12 @@ class Retriever:
                             edge_info["type"]
                         ))
         
-        # 4. 按 score 排序
+        # 4. 按 score sort
         nodes.sort(key=lambda n: scores.get(n.path, 0), reverse=True)
         
         return RetrievalResult(
             query=query,
-            nodes=nodes[:k * 2],  # 返回更多以便合成
+            nodes=nodes[:k * 2],  # return更多so that合成
             scores=scores,
             sources=sources,
             graph_edges=graph_edges,
@@ -145,7 +145,7 @@ class Retriever:
                       depth: int = 1,
                       max_expand: int = 10) -> Dict[str, Dict]:
         """
-        从种子节点扩展关系图
+        fromseednodeextendrelationgraph
         
         Returns: {path: {"from": src, "type": edge_type, "score": weight}}
         """
@@ -180,9 +180,9 @@ class Retriever:
 
 class DocumentSynthesizer:
     """
-    动态文档合成器
+    动态document合成器
     
-    将多个节点的内容聚合成一个结构化文档
+    将multiplenode的contentaggregate成一个structure化document
     """
     
     def __init__(self, store: VFSStore):
@@ -193,13 +193,13 @@ class DocumentSynthesizer:
                    max_sections: int = 5,
                    section_max_chars: int = 500) -> SynthesizedDocument:
         """
-        合成动态文档
+        合成动态document
         
         Args:
-            result: 检索结果
-            title: 文档标题（默认使用 query）
-            max_sections: 最大章节数
-            section_max_chars: 每个章节的最大字符数
+            result: retrieveresult
+            title: documenttitle（defaultuse query）
+            max_sections: maxsection数
+            section_max_chars: eachsection的maxcharacter数
         """
         if not title:
             title = f"{result.query} (auto-generated)"
@@ -221,7 +221,7 @@ class DocumentSynthesizer:
             sections.append(section)
             sources.extend([n.path for n in nodes])
         
-        # 构建 Markdown
+        # build Markdown
         content = self._build_markdown(title, sections, result)
         
         return SynthesizedDocument(
@@ -232,24 +232,24 @@ class DocumentSynthesizer:
         )
     
     def _categorize_nodes(self, nodes: List[VFSNode]) -> Dict[str, List[VFSNode]]:
-        """按路径前缀分类节点"""
+        """按pathprefixcategorynode"""
         categories = {}
         
         category_names = {
-            "/market/indicators": "技术指标",
-            "/market/news": "相关新闻",
-            "/market/watchlist": "关联标的",
-            "/trading/positions": "当前持仓",
-            "/memory/lessons": "历史经验",
-            "/memory": "记忆笔记",
-            "/research": "研究报告",
-            "/live": "实时数据",
+            "/market/indicators": "technical indicators",
+            "/market/news": "relatednews",
+            "/market/watchlist": "related标的",
+            "/trading/positions": "currentpositions",
+            "/memory/lessons": "historyexperience",
+            "/memory": "memory笔记",
+            "/research": "researchreport",
+            "/live": "live data",
         }
         
         for node in nodes:
-            # 找最长匹配的前缀
+            # 找最长match的prefix
             matched_prefix = None
-            matched_name = "其他"
+            matched_name = "other"
             
             for prefix, name in category_names.items():
                 if node.path.startswith(prefix):
@@ -267,14 +267,14 @@ class DocumentSynthesizer:
                        nodes: List[VFSNode],
                        result: RetrievalResult,
                        max_chars: int = 500) -> Dict:
-        """构建章节"""
+        """buildsection"""
         items = []
         
-        for node in nodes[:3]:  # 每个类别最多3个
-            # 提取摘要
+        for node in nodes[:3]:  # each类别at most3个
+            # extractsummary
             content = node.content
             
-            # 尝试提取关键信息
+            # tryextract关keyinfo
             summary = self._extract_summary(content, max_chars // 3)
             
             items.append({
@@ -290,8 +290,8 @@ class DocumentSynthesizer:
         }
     
     def _extract_summary(self, content: str, max_chars: int) -> str:
-        """提取内容摘要"""
-        # 移除 Markdown 标题
+        """extractcontentsummary"""
+        # remove Markdown title
         lines = content.split("\n")
         text_lines = []
         
@@ -310,7 +310,7 @@ class DocumentSynthesizer:
     def _build_markdown(self, title: str, 
                         sections: List[Dict],
                         result: RetrievalResult) -> str:
-        """构建 Markdown 文档"""
+        """build Markdown document"""
         lines = [
             f"# {title}",
             "",
@@ -324,7 +324,7 @@ class DocumentSynthesizer:
             lines.append("")
             
             for item in section["items"]:
-                # 来源标注
+                # sourceannotation
                 source_badge = ""
                 if item["source_type"] == "semantic":
                     source_badge = "🎯"
@@ -333,14 +333,14 @@ class DocumentSynthesizer:
                 else:
                     source_badge = "📝"
                 
-                lines.append(f"> {source_badge} 来源: `{item['path']}`")
+                lines.append(f"> {source_badge} source: `{item['path']}`")
                 lines.append("")
                 lines.append(item["summary"])
                 lines.append("")
         
-        # 关联图
+        # relatedgraph
         if result.graph_edges:
-            lines.append("## 关联关系")
+            lines.append("## relatedrelation")
             lines.append("")
             for src, tgt, etype in result.graph_edges:
                 lines.append(f"- {src} --[{etype}]--> {tgt}")
@@ -352,10 +352,10 @@ class DocumentSynthesizer:
                       retriever: Retriever,
                       k: int = 5) -> str:
         """
-        快速生成查询摘要
+        快速generatequerysummary
         
-        一行调用：
-            synthesizer.quick_summary("NVDA风险分析", retriever)
+        一linecall：
+            synthesizer.quick_summary("NVDA风险analysis", retriever)
         """
         result = retriever.retrieve(query, k=k, expand_graph=True)
         doc = self.synthesize(result, max_sections=5)

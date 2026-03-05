@@ -1,5 +1,5 @@
 """
-vfs/graph.py - 知识图谱（adjacency list实现）
+vfs/graph.py - knowledge graph（adjacency list implementation）
 """
 
 from dataclasses import dataclass, field
@@ -9,22 +9,22 @@ from enum import Enum
 
 
 class EdgeType(Enum):
-    """边类型"""
-    PEER = "peer"           # 同级关联（如：同板块股票）
-    PARENT = "parent"       # 父子关系（如：板块→个股）
-    CITATION = "citation"   # 引用关系（如：研报引用）
-    DERIVED = "derived"     # 派生关系（如：信号来源于指标）
-    RELATED = "related"     # 一般关联
-    VERSION_OF = "version_of"  # 版本关系（append-only memory）
+    """edge type"""
+    PEER = "peer"           # peer relation（如：同sectorstock）
+    PARENT = "parent"       # parent-child relation（如：sector→individual stock）
+    CITATION = "citation"   # citation relation（如：research report引用）
+    DERIVED = "derived"     # derived relation（如：signal derived from指标）
+    RELATED = "related"     # general relation
+    VERSION_OF = "version_of"  # versionrelation（append-only memory）
 
 
 @dataclass
 class Edge:
     """
-    图边
+    graph edge
     """
-    source: str         # 源节点路径
-    target: str         # 目标节点路径
+    source: str         # source node path
+    target: str         # targetnodepath
     edge_type: EdgeType = EdgeType.RELATED
     weight: float = 1.0
     meta: Dict = field(default_factory=dict)
@@ -39,26 +39,26 @@ class Edge:
 
 class KVGraph:
     """
-    知识图谱
+    knowledge graph
     
-    简单的 adjacency list 实现，支持：
-    - 添加/删除边
-    - 查询某节点的所有关联
-    - 按边类型过滤
-    - 路径查找（BFS）
+    simple adjacency list implementation, supports：
+    - add/delete edge
+    - queryanode的allrelated
+    - 按edge typefilter
+    - path查找（BFS）
     """
     
     def __init__(self):
         # adjacency list: {source: [Edge, ...]}
         self._outgoing: Dict[str, List[Edge]] = {}
-        # 反向索引: {target: [Edge, ...]}
+        # 反toindex: {target: [Edge, ...]}
         self._incoming: Dict[str, List[Edge]] = {}
     
     def add_edge(self, source: str, target: str, 
                  edge_type: EdgeType = EdgeType.RELATED,
                  weight: float = 1.0,
                  meta: Dict = None) -> Edge:
-        """添加边"""
+        """add边"""
         edge = Edge(
             source=source,
             target=target,
@@ -79,7 +79,7 @@ class KVGraph:
     
     def remove_edge(self, source: str, target: str, 
                     edge_type: EdgeType = None) -> int:
-        """删除边，返回删除数量"""
+        """delete edge，returndeletecount"""
         removed = 0
         
         if source in self._outgoing:
@@ -102,7 +102,7 @@ class KVGraph:
     
     def get_outgoing(self, node: str, 
                      edge_type: EdgeType = None) -> List[Edge]:
-        """获取出边"""
+        """get outgoing edges"""
         edges = self._outgoing.get(node, [])
         if edge_type:
             edges = [e for e in edges if e.edge_type == edge_type]
@@ -110,7 +110,7 @@ class KVGraph:
     
     def get_incoming(self, node: str,
                      edge_type: EdgeType = None) -> List[Edge]:
-        """获取入边"""
+        """get incoming edges"""
         edges = self._incoming.get(node, [])
         if edge_type:
             edges = [e for e in edges if e.edge_type == edge_type]
@@ -118,7 +118,7 @@ class KVGraph:
     
     def get_neighbors(self, node: str,
                       edge_type: EdgeType = None) -> Set[str]:
-        """获取所有邻居节点"""
+        """getall邻居node"""
         neighbors = set()
         for e in self.get_outgoing(node, edge_type):
             neighbors.add(e.target)
@@ -128,7 +128,7 @@ class KVGraph:
     
     def find_path(self, source: str, target: str, 
                   max_depth: int = 5) -> Optional[List[str]]:
-        """BFS查找路径"""
+        """BFS查找path"""
         if source == target:
             return [source]
         
@@ -149,7 +149,7 @@ class KVGraph:
         return None
     
     def get_subgraph(self, center: str, depth: int = 1) -> "KVGraph":
-        """获取以某节点为中心的子图"""
+        """get以anodecenter的subgraph"""
         subgraph = KVGraph()
         visited = set()
         queue = [(center, 0)]
@@ -179,7 +179,7 @@ class KVGraph:
         return subgraph
     
     def to_adjacency_list(self) -> Dict[str, List[Dict]]:
-        """导出为邻接表"""
+        """exportadjacency list"""
         result = {}
         for source, edges in self._outgoing.items():
             result[source] = [
@@ -190,13 +190,13 @@ class KVGraph:
     
     @property
     def node_count(self) -> int:
-        """节点数"""
+        """node count"""
         nodes = set(self._outgoing.keys()) | set(self._incoming.keys())
         return len(nodes)
     
     @property
     def edge_count(self) -> int:
-        """边数"""
+        """edge count"""
         return sum(len(edges) for edges in self._outgoing.values())
     
     def __repr__(self) -> str:

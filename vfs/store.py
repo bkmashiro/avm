@@ -1,5 +1,5 @@
 """
-vfs/store.py - SQLite存储层（含FTS5全文搜索）
+vfs/store.py - SQLite storage layer (with FTS5 full-text search)
 """
 
 import sqlite3
@@ -16,7 +16,7 @@ from .graph import KVGraph, Edge, EdgeType
 
 # SQLite schema
 SCHEMA = """
--- 节点表
+-- Nodes table
 CREATE TABLE IF NOT EXISTS nodes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     path TEXT UNIQUE NOT NULL,
@@ -31,13 +31,13 @@ CREATE TABLE IF NOT EXISTS nodes (
 
 CREATE INDEX IF NOT EXISTS idx_nodes_path ON nodes(path);
 
--- FTS5全文搜索索引（独立表，不使用external content避免同步问题）
+-- FTS5 full-text index (standalone table)
 CREATE VIRTUAL TABLE IF NOT EXISTS nodes_fts USING fts5(
     path,
     content
 );
 
--- 边表（关系图）
+-- Edges table (relation graph)
 CREATE TABLE IF NOT EXISTS edges (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     source TEXT NOT NULL,
@@ -52,7 +52,7 @@ CREATE TABLE IF NOT EXISTS edges (
 CREATE INDEX IF NOT EXISTS idx_edges_source ON edges(source);
 CREATE INDEX IF NOT EXISTS idx_edges_target ON edges(target);
 
--- 变更历史表
+-- Change history table
 CREATE TABLE IF NOT EXISTS diffs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     node_path TEXT NOT NULL,
@@ -67,10 +67,10 @@ CREATE TABLE IF NOT EXISTS diffs (
 CREATE INDEX IF NOT EXISTS idx_diffs_path ON diffs(node_path);
 CREATE INDEX IF NOT EXISTS idx_diffs_version ON diffs(node_path, version);
 
--- 向量表（sqlite-vec预留，暂用普通表存embedding）
+-- Vectors table (for embeddings)
 CREATE TABLE IF NOT EXISTS embeddings (
     path TEXT PRIMARY KEY,
-    vector BLOB,  -- 序列化的float数组
+    vector BLOB,  -- Serialized float array
     model TEXT,
     updated_at TEXT
 );
@@ -79,13 +79,13 @@ CREATE TABLE IF NOT EXISTS embeddings (
 
 class VFSStore:
     """
-    VFS SQLite存储
+    VFS SQLite storage
     
-    功能：
-    - 节点CRUD
-    - FTS5全文搜索
-    - 关系图存储
-    - 变更历史
+    Features:
+    - Node CRUD
+    - FTS5 full-text search
+    - Relation graph storage
+    - Change history
     """
     
     def __init__(self, db_path: str = None):
@@ -98,13 +98,13 @@ class VFSStore:
         self._init_db()
     
     def _init_db(self):
-        """初始化数据库"""
+        """Initialize database"""
         with self._conn() as conn:
             conn.executescript(SCHEMA)
     
     @contextmanager
     def _conn(self):
-        """获取数据库连接"""
+        """Get database connection"""
         conn = sqlite3.connect(self.db_path)
         conn.row_factory = sqlite3.Row
         try:
@@ -113,10 +113,10 @@ class VFSStore:
         finally:
             conn.close()
     
-    # ─── 节点操作 ─────────────────────────────────────────
+    # ─── Node operations ─────────────────────────────────────────
     
     def get_node(self, path: str) -> Optional[VFSNode]:
-        """读取节点"""
+        """Read node"""
         with self._conn() as conn:
             row = conn.execute(
                 "SELECT * FROM nodes WHERE path = ?", (path,)
@@ -137,21 +137,21 @@ class VFSStore:
     
     def put_node(self, node: VFSNode, save_diff: bool = True) -> VFSNode:
         """
-        写入节点
+        Write node
         
-        - 检查写权限
-        - 自动递增版本
-        - 保存diff
+        - Check write permission
+        - Auto-increment version
+        - Save diff
         """
         if not node.is_writable:
-            # 只读路径：仅允许内部provider写入（通过 _put_node_internal）
+            # Read-only path: only allow internal provider writes(via _put_node_internal)
             raise PermissionError(f"Path {node.path} is read-only")
         
         return self._put_node_internal(node, save_diff)
     
     def _put_node_internal(self, node: VFSNode, save_diff: bool = True) -> VFSNode:
         """
-        内部写入（绕过权限检查，供provider使用）
+        Internal write (bypass permission check, for providers)
         """
         with self._conn() as conn:
             existing = self.get_node(node.path)
@@ -160,12 +160,12 @@ class VFSStore:
             new_hash = node.content_hash
             
             if existing:
-                # 更新
+                # Update
                 old_hash = existing.content_hash
                 new_version = existing.version + 1
                 
                 if save_diff and old_hash != new_hash:
-                    # 保存diff
+                    # Save diff
                     diff = self._compute_diff(existing.content, node.content)
                     self._save_diff(conn, NodeDiff(
                         node_path=node.path,
@@ -191,7 +191,7 @@ class VFSStore:
                     node.path,
                 ))
                 
-                # 更新FTS索引
+                # Update FTS index
                 conn.execute("DELETE FROM nodes_fts WHERE path = ?", (node.path,))
                 conn.execute(
                     "INSERT INTO nodes_fts (path, content) VALUES (?, ?)",
@@ -201,7 +201,7 @@ class VFSStore:
                 node.version = new_version
                 node.updated_at = now
             else:
-                # 新建
+                # Create new
                 if save_diff:
                     self._save_diff(conn, NodeDiff(
                         node_path=node.path,
@@ -227,7 +227,7 @@ class VFSStore:
                     new_hash,
                 ))
                 
-                # 插入FTS索引
+                # Insert FTS index
                 conn.execute(
                     "INSERT INTO nodes_fts (path, content) VALUES (?, ?)",
                     (node.path, node.content)
@@ -240,7 +240,7 @@ class VFSStore:
         return node
     
     def delete_node(self, path: str) -> bool:
-        """删除节点"""
+        """Delete node"""
         node = self.get_node(path)
         if node is None:
             return False
@@ -249,7 +249,7 @@ class VFSStore:
             raise PermissionError(f"Path {path} is read-only")
         
         with self._conn() as conn:
-            # 记录删除
+            # Record deletion
             self._save_diff(conn, NodeDiff(
                 node_path=path,
                 version=node.version + 1,
@@ -266,7 +266,7 @@ class VFSStore:
         return True
     
     def list_nodes(self, prefix: str = "/", limit: int = 100) -> List[VFSNode]:
-        """列出节点"""
+        """List nodes"""
         with self._conn() as conn:
             rows = conn.execute(
                 "SELECT * FROM nodes WHERE path LIKE ? ORDER BY path LIMIT ?",
@@ -286,16 +286,16 @@ class VFSStore:
                 for row in rows
             ]
     
-    # ─── 搜索 ─────────────────────────────────────────────
+    # ─── Search ─────────────────────────────────────────────
     
     def search(self, query: str, limit: int = 10) -> List[Tuple[VFSNode, float]]:
         """
-        FTS5全文搜索
-        返回 [(node, score), ...]
+        FTS5 full-text search
+        return [(node, score), ...]
         
-        自动添加前缀匹配（*）以支持中英混合文本
+        Auto-add prefix match (*) for mixed text
         """
-        # 对每个词添加前缀匹配
+        # Add prefix match for each word
         terms = query.split()
         fts_query = " ".join(f"{term}*" for term in terms)
         
@@ -325,13 +325,13 @@ class VFSStore:
             
             return results
     
-    # ─── 关系图 ─────────────────────────────────────────────
+    # ─── Relation graph ─────────────────────────────────────────────
     
     def add_edge(self, source: str, target: str,
                  edge_type: EdgeType = EdgeType.RELATED,
                  weight: float = 1.0,
                  meta: Dict = None) -> Edge:
-        """添加边"""
+        """Add edge"""
         edge = Edge(
             source=source,
             target=target,
@@ -356,7 +356,7 @@ class VFSStore:
     def get_links(self, path: str, 
                   direction: str = "both",
                   edge_type: EdgeType = None) -> List[Edge]:
-        """获取节点的关联边"""
+        """Get edges for node"""
         with self._conn() as conn:
             edges = []
             
@@ -397,7 +397,7 @@ class VFSStore:
             return edges
     
     def load_graph(self) -> KVGraph:
-        """加载完整图到内存"""
+        """Load full graph to memory"""
         graph = KVGraph()
         
         with self._conn() as conn:
@@ -415,7 +415,7 @@ class VFSStore:
     # ─── Diff ─────────────────────────────────────────────
     
     def _compute_diff(self, old: str, new: str) -> str:
-        """计算unified diff"""
+        """Calculate unified diff"""
         diff = difflib.unified_diff(
             old.splitlines(keepends=True),
             new.splitlines(keepends=True),
@@ -424,7 +424,7 @@ class VFSStore:
         return "".join(diff)
     
     def _save_diff(self, conn, diff: NodeDiff):
-        """保存diff记录"""
+        """Save diff record"""
         conn.execute("""
             INSERT INTO diffs 
                 (node_path, version, old_hash, new_hash, diff_content, changed_at, change_type)
@@ -440,7 +440,7 @@ class VFSStore:
         ))
     
     def get_history(self, path: str, limit: int = 10) -> List[NodeDiff]:
-        """获取变更历史"""
+        """Get change history"""
         with self._conn() as conn:
             rows = conn.execute("""
                 SELECT * FROM diffs 
@@ -462,16 +462,16 @@ class VFSStore:
                 for row in rows
             ]
     
-    # ─── 统计 ─────────────────────────────────────────────
+    # ─── Statistics ─────────────────────────────────────────────
     
     def stats(self) -> Dict[str, Any]:
-        """获取存储统计"""
+        """Get storage statistics"""
         with self._conn() as conn:
             node_count = conn.execute("SELECT COUNT(*) FROM nodes").fetchone()[0]
             edge_count = conn.execute("SELECT COUNT(*) FROM edges").fetchone()[0]
             diff_count = conn.execute("SELECT COUNT(*) FROM diffs").fetchone()[0]
             
-            # 按路径前缀统计
+            # Stats by path prefix
             prefix_stats = {}
             for row in conn.execute("""
                 SELECT 

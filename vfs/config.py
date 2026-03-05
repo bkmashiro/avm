@@ -1,7 +1,7 @@
 """
-vfs/config.py - 配置驱动的 VFS
+vfs/config.py - Config-driven VFS
 
-支持 YAML 配置文件，零硬编码
+Supports YAML configuration files with zero hardcoding.
 """
 
 import os
@@ -15,20 +15,20 @@ import yaml
 
 @dataclass
 class ProviderSpec:
-    """Provider 规格"""
+    """Provider specification"""
     pattern: str                    # glob pattern, e.g. "/trading/positions*"
     type: str                       # provider type name
     ttl: int = 0                    # TTL in seconds (0 = no expiry)
     config: Dict[str, Any] = field(default_factory=dict)  # provider-specific config
     
     def matches(self, path: str) -> bool:
-        """检查路径是否匹配此 provider"""
+        """Check if path matches this provider pattern"""
         return fnmatch.fnmatch(path, self.pattern)
 
 
 @dataclass  
 class PermissionRule:
-    """权限规则"""
+    """Permission rule"""
     pattern: str                    # glob pattern
     access: str = "ro"              # "ro" | "rw" | "none"
     
@@ -47,25 +47,25 @@ class PermissionRule:
 @dataclass
 class VFSConfig:
     """
-    VFS 配置
+    VFS Configuration
     
-    从 YAML 文件加载，支持环境变量展开
+    Loads from YAML file with environment variable expansion.
     """
     providers: List[ProviderSpec] = field(default_factory=list)
     permissions: List[PermissionRule] = field(default_factory=list)
     db_path: str = ""
     default_ttl: int = 300
     
-    # 默认权限（如果没有匹配的规则）
+    # Default access if no matching rule
     default_access: str = "ro"
     
     @classmethod
     def from_yaml(cls, path: str) -> "VFSConfig":
-        """从 YAML 文件加载配置"""
+        """Load configuration from YAML file"""
         with open(path) as f:
             raw = f.read()
         
-        # 展开环境变量 ${VAR} 或 $VAR
+        # Expand env vars ${VAR} or $VAR
         def expand_env(match):
             var = match.group(1) or match.group(2)
             return os.environ.get(var, match.group(0))
@@ -77,7 +77,7 @@ class VFSConfig:
     
     @classmethod
     def from_dict(cls, data: Dict) -> "VFSConfig":
-        """从字典创建配置"""
+        """Create configuration from dictionary"""
         providers = [
             ProviderSpec(
                 pattern=p.get("pattern", "/*"),
@@ -105,7 +105,7 @@ class VFSConfig:
         )
     
     def to_dict(self) -> Dict:
-        """导出为字典"""
+        """Export as dictionary"""
         return {
             "providers": [
                 {"pattern": p.pattern, "type": p.type, "ttl": p.ttl, "config": p.config}
@@ -121,7 +121,7 @@ class VFSConfig:
         }
     
     def get_provider_spec(self, path: str) -> Optional[ProviderSpec]:
-        """获取匹配路径的 provider spec"""
+        """Get provider spec matching path"""
         for spec in self.providers:
             if spec.matches(path):
                 return spec
@@ -129,10 +129,10 @@ class VFSConfig:
     
     def check_permission(self, path: str, action: str = "read") -> bool:
         """
-        检查路径权限
+        Check path permission
         
         Args:
-            path: 路径
+            path: path
             action: "read" | "write"
         """
         for rule in self.permissions:
@@ -143,7 +143,7 @@ class VFSConfig:
                     return rule.can_write
                 return False
         
-        # 默认权限
+        # Default permission
         if action == "read":
             return self.default_access in ("ro", "rw")
         elif action == "write":
@@ -151,7 +151,7 @@ class VFSConfig:
         return False
 
 
-# 默认配置（向后兼容）
+# Default configuration (backward compatible)
 DEFAULT_CONFIG = VFSConfig(
     providers=[
         ProviderSpec(pattern="/live/positions*", type="alpaca_positions", ttl=60),
@@ -174,13 +174,13 @@ DEFAULT_CONFIG = VFSConfig(
 
 def load_config(config_path: str = None) -> VFSConfig:
     """
-    加载配置
+    Load configuration
     
-    优先级:
-    1. 指定路径
-    2. 环境变量 VFS_CONFIG
+    Priority:
+    1. Specified path
+    2. Environment variable VFS_CONFIG
     3. ~/.vfs/config.yaml
-    4. 默认配置
+    4. Default configuration
     """
     paths_to_try = []
     

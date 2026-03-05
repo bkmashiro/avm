@@ -13,12 +13,12 @@ from ..store import VFSStore
 
 class AlpacaPositionsProvider(LiveProvider):
     """
-    Alpaca 持仓数据
+    Alpaca positions data
     
-    路径:
-        /live/positions.md         - 持仓总览
-        /live/positions/account.md - 账户信息
-        /live/positions/AAPL.md    - 单个持仓
+    path:
+        /live/positions.md         - positions总览
+        /live/positions/account.md - accountinfo
+        /live/positions/AAPL.md    - singlepositions
     """
     
     def __init__(self, store: VFSStore, 
@@ -166,12 +166,12 @@ class AlpacaPositionsProvider(LiveProvider):
 
 class AlpacaOrdersProvider(LiveProvider):
     """
-    Alpaca 订单数据
+    Alpaca orders data
     
-    路径:
-        /live/orders.md           - 所有订单
-        /live/orders/open.md      - 未成交订单
-        /live/orders/filled.md    - 已成交订单
+    path:
+        /live/orders.md           - allorders
+        /live/orders/open.md      - notfilledorders
+        /live/orders/filled.md    - alreadyfilledorders
     """
     
     def __init__(self, store: VFSStore,

@@ -1,8 +1,8 @@
 """
 AI Virtual Filesystem (VFS)
 
-让 AI Bot 通过文件路径读写结构化知识。
-配置驱动，支持自定义 provider 和权限规则。
+A config-driven virtual filesystem for AI agents to read/write structured knowledge via file paths.
+Supports custom providers, permissions, and multi-agent collaboration.
 """
 
 __version__ = "0.8.0"
