@@ -70,9 +70,18 @@ A config-driven virtual filesystem for AI agents to read/write structured knowle
 📌 Tag Cloud:
    market: 2, nvda: 1, warning: 1, btc: 1
 
-📌 Memories tagged 'market':
-   /memory/private/trader/nvda_warning.md
-   /memory/private/trader/btc_observation.md
+============================================================
+  7. NAVIGATION & DISCOVERY
+============================================================
+📌 Topics:
+   📁 private: 3 memories
+   🏷️ market: 2, technical: 1, crypto: 1
+
+📌 Timeline (today):
+   [14:30] nvda_alert: NVDA RSI at 72...
+   [14:25] btc_note: BTC holding $65K...
+
+📌 Workflow: topics() → browse() → explore() → recall()
 
 ============================================================
   DEMO COMPLETE 🎉
@@ -194,6 +203,45 @@ avm-memory:
 | `avm_tags` | Tag cloud |
 | `avm_recent` | Time-based queries |
 | `avm_stats` | Statistics |
+
+## Navigation & Discovery
+
+When an agent forgets context or doesn't know keywords, use navigation methods:
+
+```python
+mem = avm.agent_memory("trader")
+
+# 1. Topic overview - see what's in memory
+mem.topics()
+# ## Memory Topics
+# ### By Category:
+#   📁 private: 15 memories
+# ### By Tag:
+#   🏷️ technical: 4 occurrences
+#   🏷️ crypto: 3 occurrences
+
+# 2. Browse tree - drill down without keywords
+mem.browse("/memory", depth=2)
+# 📁 private (15)
+#   📁 trader (15)
+
+# 3. Timeline - "what did I observe recently?"
+mem.timeline(days=7, limit=10)
+# ## Timeline (last 7 days)
+# ### 2026-03-05
+#   [14:30] nvda_rsi: NVDA RSI at 72...
+#   [14:25] btc_support: BTC holding $65K...
+
+# 4. Graph exploration - follow links
+mem.explore("/memory/private/trader/nvda.md", depth=2)
+# ## Starting from: .../nvda.md
+# ### Hop 1:
+#   [related] .../macd_analysis.md
+# ### Hop 2:
+#   [derived] .../trading_signal.md
+```
+
+**Workflow:** topics() → browse() → explore() → recall()
 
 ## Configuration
 

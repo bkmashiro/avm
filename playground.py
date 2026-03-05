@@ -353,7 +353,38 @@ trader.recall("SPY pattern")  # Returns nothing''')
     pause()
     
     # ═══════════════════════════════════════════════════════════
-    section("8. FILE STRUCTURE", "📂")
+    section("8. NAVIGATION & DISCOVERY", "🧭")
+    # ═══════════════════════════════════════════════════════════
+    
+    console.print("When you forget context or don't know keywords:\n")
+    
+    show_code('''# 1. Get topic overview
+trader.topics()
+
+# 2. Browse tree structure  
+trader.browse("/memory", depth=2)
+
+# 3. View timeline
+trader.timeline(days=7)
+
+# 4. Explore via graph links
+trader.explore(path, depth=2)''')
+    
+    console.print("\n[bold]Topic Overview:[/bold]")
+    topics_result = trader.topics(limit=5)
+    from rich.text import Text
+    console.print(Panel(Text(topics_result), border_style="cyan"))
+    
+    console.print("\n[bold]Timeline (today):[/bold]")
+    timeline_result = trader.timeline(days=1, limit=5)
+    console.print(Panel(Text(timeline_result), border_style="cyan"))
+    
+    console.print("\n[dim]Workflow: topics() → browse() → explore() → recall()[/dim]")
+    
+    pause()
+    
+    # ═══════════════════════════════════════════════════════════
+    section("9. FILE STRUCTURE", "📂")
     # ═══════════════════════════════════════════════════════════
     
     console.print("View the virtual filesystem:\n")
@@ -381,7 +412,7 @@ trader.recall("SPY pattern")  # Returns nothing''')
     pause()
     
     # ═══════════════════════════════════════════════════════════
-    section("9. STATISTICS", "📊")
+    section("10. STATISTICS", "📊")
     # ═══════════════════════════════════════════════════════════
     
     stats = avm.stats()
@@ -411,6 +442,7 @@ trader.recall("SPY pattern")  # Returns nothing''')
   ✅ Token-aware recall for AI agents
   ✅ Multi-agent memory isolation
   ✅ Tags and metadata
+  ✅ Navigation & discovery
 
 [bold yellow]Next Steps:[/bold yellow]
 
