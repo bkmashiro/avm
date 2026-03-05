@@ -33,12 +33,34 @@ vfs.link("/memory/lesson1.md", "/market/indicators/NVDA.md", "related_to")
 ```yaml
 # config.yaml
 providers:
-  - pattern: "/live/positions*"
-    type: alpaca_positions
+  # HTTP API provider
+  - pattern: "/live/prices/{symbol}"
+    handler: http
+    config:
+      url: "https://api.example.com/prices/${symbol}"
+      headers:
+        Authorization: "Bearer ${API_KEY}"
+      transform: ".price"
     ttl: 60
+
+  # Script provider
+  - pattern: "/system/status"
+    handler: script
+    config:
+      command: "uptime"
+
+  # Plugin provider
   - pattern: "/live/indicators/*"
-    type: technical_indicators
-    ttl: 300
+    handler: plugin
+    config:
+      plugin: "vfs_plugins.talib"
+
+  # SQLite provider
+  - pattern: "/db/users/*"
+    handler: sqlite
+    config:
+      db: "${HOME}/data.db"
+      read_query: "SELECT * FROM users WHERE id = ${id}"
 
 permissions:
   - pattern: "/memory/*"
@@ -47,6 +69,42 @@ permissions:
     access: ro
 
 default_access: ro
+```
+
+### Handlers
+
+| Handler | Description |
+|---------|-------------|
+| `file` | Local filesystem |
+| `http` | REST API calls |
+| `script` | Execute commands |
+| `plugin` | Python plugins |
+| `sqlite` | SQLite queries |
+
+### Variable Expansion
+
+Patterns support `{var}` for path extraction and `${VAR}` for config expansion:
+
+```yaml
+- pattern: "/users/{id}/posts"
+  handler: http
+  config:
+    url: "https://api.example.com/users/${id}/posts"
+    headers:
+      Authorization: "Bearer ${API_KEY}"  # From environment
+```
+
+### Custom Handlers
+
+```python
+from vfs import BaseHandler, register_handler
+
+class RedisHandler(BaseHandler):
+    def read(self, path, context):
+        key = path.split('/')[-1]
+        return self.redis.get(key)
+
+register_handler('redis', RedisHandler)
 ```
 
 ```python

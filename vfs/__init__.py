@@ -24,6 +24,18 @@ from .advanced import (
     DerivedLinkManager, TimeQuery,
     TagManager, AccessStats, ExportManager, SyncManager
 )
+from .handlers import (
+    ProviderConfig,
+    ProviderManager,
+    BaseHandler,
+    FileHandler,
+    HTTPHandler,
+    ScriptHandler,
+    PluginHandler,
+    SQLiteHandler,
+    register_handler,
+    HANDLERS,
+)
 from .permissions import (
     User, Group, Capability, PermBits,
     NodeOwnership, UserRegistry, PermissionManager,
