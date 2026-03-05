@@ -13,7 +13,7 @@ A config-driven virtual filesystem for AI agents to read/write structured knowle
 | Challenge | Without AVM | With AVM |
 |-----------|-------------|----------|
 | **Memory persistence** | Gone after session | Permanent, queryable |
-| **Context limits** | 128K tokens, then truncate | Token-aware recall, fit any budget |
+| **Context limits** | Fixed window, then truncate | Token-aware recall, fit any budget |
 | **Knowledge structure** | Flat vector chunks | Linked graph, typed relationships |
 | **Multi-agent** | Shared DB, no isolation | Private + shared namespaces |
 | **Discovery** | Need exact keywords | Browse, explore, timeline |
