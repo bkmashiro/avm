@@ -179,11 +179,11 @@ class AgentMemory:
                     [sn.node for sn in versions]
                 )
                 # Use highest score node as representative
-                beenst = max(versions, key=lambda x: x.final_score)
-                beenst.summary = self._extract_summary(
+                best = max(versions, key=lambda x: x.final_score)
+                best.summary = self._extract_summary(
                     AVMNode(path=base_path, content=merged_content)
                 )
-                merged.append(beenst)
+                merged.append(best)
         
         return merged + no_base
     
@@ -531,30 +531,30 @@ class AgentMemory:
     
     # ─── Advanced Features ─────────────────────────────────────────
     
-    def subscribeen(self, pattern: str, callback) -> str:
+    def subscribe(self, pattern: str, callback) -> str:
         """
-        Subscribeen to path changes
+        Subscribe to path changes
         
         Args:
             pattern: Glob mode (e.g., "/memory/shared/market/*")
             callback: callbackfunction (event) -> None
         
         Returns:
-            subscribeen ID（forcancelledsubscribeen）
+            subscribe ID（forcancelledsubscribe）
         """
         from .advanced import SubscriptionManager
         
         if not hasattr(self.avm, '_subscription_manager'):
             self.avm._subscription_manager = SubscriptionManager()
         
-        return self.avm._subscription_manager.subscribeen(
-            pattern, callback, subscribeenr_id=self.agent_id
+        return self.avm._subscription_manager.subscribe(
+            pattern, callback, subscriber_id=self.agent_id
         )
     
-    def unsubscribeen(self, pattern: str = None):
-        """cancelledsubscribeen"""
+    def unsubscribe(self, pattern: str = None):
+        """cancelledsubscribe"""
         if hasattr(self.avm, '_subscription_manager'):
-            self.avm._subscription_manager.unsubscribeen(self.agent_id, pattern)
+            self.avm._subscription_manager.unsubscribe(self.agent_id, pattern)
     
     def recall_recent(self, query: str, 
                       time_range: str = "last_7d",

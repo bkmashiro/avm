@@ -407,17 +407,17 @@ class AVM:
     
     # ─── Advanced Features ─────────────────────────────────────────
     
-    def subscribeen(self, pattern: str, callback) -> str:
-        """Subscribeen to path changes"""
+    def subscribe(self, pattern: str, callback) -> str:
+        """Subscribe to path changes"""
         from .advanced import SubscriptionManager
         
         if not hasattr(self, '_subscription_manager'):
             self._subscription_manager = SubscriptionManager()
         
-        return self._subscription_manager.subscribeen(pattern, callback)
+        return self._subscription_manager.subscribe(pattern, callback)
     
-    def _notify_subscribeenrs(self, path: str, event_type: str, agent_id: str = None):
-        """Notify subscribeenrs (internal method)"""
+    def _notify_subscribers(self, path: str, event_type: str, agent_id: str = None):
+        """Notify subscribers (internal method)"""
         if hasattr(self, '_subscription_manager'):
             from .advanced import MemoryEvent, EventType
             

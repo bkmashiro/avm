@@ -213,7 +213,7 @@ class SubscriptionManager:
         def on_market_update(event):
             print(f"Market update: {event.path}")
         
-        sub_mgr.subscribeen("/memory/shared/market/*", on_market_update)
+        sub_mgr.subscribe("/memory/shared/market/*", on_market_update)
         
         # Later, when write happens:
         sub_mgr.notify(MemoryEvent(
@@ -225,48 +225,48 @@ class SubscriptionManager:
     
     def __init__(self):
         self._subscriptions: Dict[str, List[Tuple[str, Callback]]] = {}
-        # pattern -> [(subscribeenr_id, callback), ...]
-        self._subscribeenr_count = 0
+        # pattern -> [(subscriber_id, callback), ...]
+        self._subscriber_count = 0
     
-    def subscribeen(self, pattern: str, callback: Callback, 
-                  subscribeenr_id: str = None) -> str:
+    def subscribe(self, pattern: str, callback: Callback, 
+                  subscriber_id: str = None) -> str:
         """
-        Subscribeen to path pattern
+        Subscribe to path pattern
         
         Args:
             pattern: Glob pattern (e.g., "/memory/shared/market/*")
             callback: Function to call on match
-            subscribeenr_id: Optional ID (auto-generated if not provided)
+            subscriber_id: Optional ID (auto-generated if not provided)
         
         Returns:
-            Subscribeenr ID for unsubscribeen
+            Subscriber ID for unsubscribe
         """
-        if subscribeenr_id is None:
-            self._subscribeenr_count += 1
-            subscribeenr_id = f"sub_{self._subscribeenr_count}"
+        if subscriber_id is None:
+            self._subscriber_count += 1
+            subscriber_id = f"sub_{self._subscriber_count}"
         
         if pattern not in self._subscriptions:
             self._subscriptions[pattern] = []
         
-        self._subscriptions[pattern].append((subscribeenr_id, callback))
-        return subscribeenr_id
+        self._subscriptions[pattern].append((subscriber_id, callback))
+        return subscriber_id
     
-    def unsubscribeen(self, subscribeenr_id: str, pattern: str = None):
-        """Unsubscribeen by ID"""
+    def unsubscribe(self, subscriber_id: str, pattern: str = None):
+        """Unsubscribe by ID"""
         patterns = [pattern] if pattern else list(self._subscriptions.keys())
         
         for p in patterns:
             if p in self._subscriptions:
                 self._subscriptions[p] = [
                     (sid, cb) for sid, cb in self._subscriptions[p]
-                    if sid != subscribeenr_id
+                    if sid != subscriber_id
                 ]
     
     def notify(self, event: MemoryEvent):
-        """Notify all matching subscribeenrs"""
-        for pattern, subscribeenrs in self._subscriptions.items():
+        """Notify all matching subscribers"""
+        for pattern, subscribers in self._subscriptions.items():
             if fnmatch.fnmatch(event.path, pattern):
-                for subscribeenr_id, callback in subscribeenrs:
+                for subscriber_id, callback in subscribers:
                     try:
                         callback(event)
                     except Exception as e:
@@ -274,7 +274,7 @@ class SubscriptionManager:
                         print(f"Subscription callback error: {e}")
     
     def list_subscriptions(self) -> Dict[str, int]:
-        """List patterns and subscribeenr counts"""
+        """List patterns and subscriber counts"""
         return {p: len(subs) for p, subs in self._subscriptions.items()}
 
 

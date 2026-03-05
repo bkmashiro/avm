@@ -11,7 +11,7 @@ from avm import AVM, AVMNode
 
 
 @pytest.fixture
-def vfs():
+def avm():
     """Create temp AVM instance"""
     with tempfile.TemporaryDirectory() as tmpdir:
         db_path = os.path.join(tmpdir, "test.db")
@@ -49,31 +49,31 @@ def vfs():
 class TestSubscription:
     """Subscription system tests"""
     
-    def test_subscribeen_and_notify(self, avm):
+    def test_subscribe_and_notify(self, avm):
         akashi = avm.agent_memory("akashi")
         
         events = []
         def on_event(event):
             events.append(event)
         
-        # Subscribeen
-        sub_id = akashi.subscribeen("/memory/shared/market/*", on_event)
+        # Subscribe
+        sub_id = akashi.subscribe("/memory/shared/market/*", on_event)
         assert sub_id == "akashi"
         
         # Manually trigger notification
-        avm._notify_subscribeenrs("/memory/shared/market/BTC.md", "write", "akashi")
+        avm._notify_subscribers("/memory/shared/market/BTC.md", "write", "akashi")
         
         assert len(events) == 1
         assert events[0].path == "/memory/shared/market/BTC.md"
     
-    def test_unsubscribeen(self, avm):
+    def test_unsubscribe(self, avm):
         akashi = avm.agent_memory("akashi")
         
         events = []
-        akashi.subscribeen("/memory/*", lambda e: events.append(e))
-        akashi.unsubscribeen()
+        akashi.subscribe("/memory/*", lambda e: events.append(e))
+        akashi.unsubscribe()
         
-        avm._notify_subscribeenrs("/memory/test.md", "write", "akashi")
+        avm._notify_subscribers("/memory/test.md", "write", "akashi")
         assert len(events) == 0
 
 
