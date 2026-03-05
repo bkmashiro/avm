@@ -19,7 +19,6 @@ from typing import Optional
 from .store import VFSStore
 from .node import VFSNode, NodeType
 from .graph import EdgeType
-from .provider import AlpacaPositionsProvider, MemoryProvider
 
 
 def get_store(db_path: Optional[str] = None) -> VFSStore:
@@ -27,33 +26,75 @@ def get_store(db_path: Optional[str] = None) -> VFSStore:
     return VFSStore(db_path)
 
 
+def _load_alpaca_env():
+    """加载 Alpaca 配置"""
+    env_path = Path.home() / ".openclaw" / "workspace" / "trading" / ".env"
+    if env_path.exists():
+        return dict(
+            line.split("=", 1) 
+            for line in env_path.read_text().splitlines() 
+            if "=" in line
+        )
+    return None
+
+
+def _get_provider(store, path, force_refresh=False):
+    """根据路径获取对应的 provider 并获取节点"""
+    from .providers import (
+        AlpacaPositionsProvider, AlpacaOrdersProvider,
+        TechnicalIndicatorsProvider, NewsProvider
+    )
+    
+    # Alpaca positions
+    if path.startswith("/live/positions"):
+        env = _load_alpaca_env()
+        if not env:
+            return None, "Alpaca credentials not found"
+        provider = AlpacaPositionsProvider(
+            store,
+            api_key=env.get("ALPACA_API_KEY", ""),
+            secret_key=env.get("ALPACA_SECRET_KEY", ""),
+            base_url=env.get("ALPACA_BASE_URL", "https://paper-api.alpaca.markets"),
+        )
+        return provider.get(path, force_refresh=force_refresh), None
+    
+    # Alpaca orders
+    if path.startswith("/live/orders"):
+        env = _load_alpaca_env()
+        if not env:
+            return None, "Alpaca credentials not found"
+        provider = AlpacaOrdersProvider(
+            store,
+            api_key=env.get("ALPACA_API_KEY", ""),
+            secret_key=env.get("ALPACA_SECRET_KEY", ""),
+            base_url=env.get("ALPACA_BASE_URL", "https://paper-api.alpaca.markets"),
+        )
+        return provider.get(path, force_refresh=force_refresh), None
+    
+    # Technical indicators
+    if path.startswith("/live/indicators"):
+        provider = TechnicalIndicatorsProvider(store)
+        return provider.get(path, force_refresh=force_refresh), None
+    
+    # News
+    if path.startswith("/live/news"):
+        provider = NewsProvider(store)
+        return provider.get(path, force_refresh=force_refresh), None
+    
+    # Default: direct store access
+    return store.get_node(path), None
+
+
 def cmd_read(args):
     """读取节点"""
     store = get_store(args.db)
     path = args.path
     
-    # 检查是否需要 live provider
-    if path.startswith("/live/positions"):
-        # 加载 Alpaca 配置
-        env_path = Path.home() / ".openclaw" / "workspace" / "trading" / ".env"
-        if env_path.exists():
-            env = dict(
-                line.split("=", 1) 
-                for line in env_path.read_text().splitlines() 
-                if "=" in line
-            )
-            provider = AlpacaPositionsProvider(
-                store,
-                api_key=env.get("ALPACA_API_KEY", ""),
-                secret_key=env.get("ALPACA_SECRET_KEY", ""),
-                base_url=env.get("ALPACA_BASE_URL", "https://paper-api.alpaca.markets"),
-            )
-            node = provider.get(path, force_refresh=args.refresh)
-        else:
-            print(f"Error: Alpaca credentials not found at {env_path}", file=sys.stderr)
-            return 1
-    else:
-        node = store.get_node(path)
+    node, error = _get_provider(store, path, force_refresh=args.refresh)
+    
+    if error:
+        print(f"Error: {error}", file=sys.stderr)
+        return 1
     
     if node is None:
         print(f"Not found: {path}", file=sys.stderr)
@@ -252,6 +293,80 @@ def cmd_stats(args):
     return 0
 
 
+def cmd_import(args):
+    """导入文件"""
+    from .tools import VFSImporter
+    
+    store = get_store(args.db)
+    importer = VFSImporter(store)
+    source = Path(args.source)
+    
+    if source.is_file():
+        node = importer.import_file(str(source), f"{args.prefix}/{source.name}")
+        print(f"Imported: {node.path}")
+    elif source.is_dir():
+        nodes = importer.import_directory(
+            str(source),
+            args.prefix,
+            pattern=args.pattern,
+            flatten=args.flatten,
+        )
+        print(f"Imported {len(nodes)} files")
+        for node in nodes:
+            print(f"  {node.path}")
+    else:
+        print(f"Not found: {source}", file=sys.stderr)
+        return 1
+    
+    return 0
+
+
+def cmd_export(args):
+    """导出节点"""
+    from .tools import VFSExporter
+    
+    store = get_store(args.db)
+    exporter = VFSExporter(store)
+    
+    if args.format == "json":
+        data = exporter.export_to_json(args.prefix, args.output)
+        if not args.output:
+            print(json.dumps(data, indent=2, default=str))
+        else:
+            print(f"Exported {len(data)} nodes to {args.output}")
+    else:
+        if not args.output:
+            print("Error: --output required for files format", file=sys.stderr)
+            return 1
+        count = exporter.export_to_directory(args.prefix, args.output)
+        print(f"Exported {count} files to {args.output}")
+    
+    return 0
+
+
+def cmd_autolink(args):
+    """自动发现关系"""
+    from .tools import RelationBuilder
+    
+    store = get_store(args.db)
+    builder = RelationBuilder(store)
+    
+    total = 0
+    
+    if args.by in ("symbol", "all"):
+        count = builder.auto_link_by_symbol(args.prefix)
+        print(f"Symbol-based links: {count}")
+        total += count
+    
+    if args.by in ("tag", "all"):
+        count = builder.link_by_tags()
+        print(f"Tag-based links: {count}")
+        total += count
+    
+    print(f"Total links added: {total}")
+    return 0
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="AI Virtual Filesystem",
@@ -319,6 +434,27 @@ def main():
     # stats
     p_stats = subparsers.add_parser("stats", help="Show storage stats")
     p_stats.set_defaults(func=cmd_stats)
+    
+    # import
+    p_import = subparsers.add_parser("import", help="Import files")
+    p_import.add_argument("source", help="Local file or directory")
+    p_import.add_argument("--prefix", "-p", default="/research", help="VFS path prefix")
+    p_import.add_argument("--pattern", default="**/*.md", help="Glob pattern (for directories)")
+    p_import.add_argument("--flatten", action="store_true", help="Flatten directory structure")
+    p_import.set_defaults(func=cmd_import)
+    
+    # export
+    p_export = subparsers.add_parser("export", help="Export nodes")
+    p_export.add_argument("prefix", nargs="?", default="/", help="Path prefix to export")
+    p_export.add_argument("--output", "-o", help="Output path (file for JSON, dir for files)")
+    p_export.add_argument("--format", "-f", choices=["json", "files"], default="json")
+    p_export.set_defaults(func=cmd_export)
+    
+    # auto-link
+    p_autolink = subparsers.add_parser("auto-link", help="Auto-discover relationships")
+    p_autolink.add_argument("--prefix", "-p", default="/", help="Path prefix")
+    p_autolink.add_argument("--by", choices=["symbol", "tag", "all"], default="all")
+    p_autolink.set_defaults(func=cmd_autolink)
     
     args = parser.parse_args()
     
