@@ -324,7 +324,9 @@ vfs-memory:
 
 | Tool | Description |
 |------|-------------|
-| `vfs_recall` | Token-controlled memory retrieval |
+| `vfs_recall` | One-step retrieval with full content |
+| `vfs_browse` | Two-phase: paths + summaries only |
+| `vfs_fetch` | Two-phase: get full content of selected paths |
 | `vfs_remember` | Store memory with tags/importance |
 | `vfs_search` | Full-text search |
 | `vfs_list` | List memories by prefix |
@@ -333,10 +335,39 @@ vfs-memory:
 | `vfs_recent` | Time-based queries |
 | `vfs_stats` | Memory statistics |
 
-### Example Usage
+### Two-Phase Retrieval (Token-Efficient)
+
+For large result sets, use two-phase retrieval to save tokens:
+
+```
+Step 1: vfs_browse("NVDA") → ~200 tokens
+┌─────────────────────────────────────────────────────┐
+│ Found 6 memories for "NVDA":                        │
+│                                                     │
+│ 🎯 [0.85] /memory/shared/market/NVDA.md            │
+│     RSI超买警告，建议减仓...                         │
+│     Tags: market, nvda                              │
+│                                                     │
+│ 📝 [0.72] /memory/lessons/nvda_q4.md               │
+│     上次Q4财报后跌15%...                            │
+└─────────────────────────────────────────────────────┘
+
+Step 2: vfs_fetch(["/memory/shared/market/NVDA.md"]) → ~300 tokens
+┌─────────────────────────────────────────────────────┐
+│ ## /memory/shared/market/NVDA.md                    │
+│                                                     │
+│ RSI 72，超买警告。MACD死叉形成中。                   │
+│ 建议减仓至5%以下。                                  │
+└─────────────────────────────────────────────────────┘
+
+Total: 500 tokens vs 2000 tokens (one-step) = 75% saved
+```
+
+### One-Step Retrieval (Simple)
+
+For quick queries, use one-step retrieval:
 
 ```json
-// Retrieve context
 {
   "name": "vfs_recall",
   "arguments": {
@@ -344,8 +375,11 @@ vfs-memory:
     "max_tokens": 4000
   }
 }
+```
 
-// Store insight
+### Store Memory
+
+```json
 {
   "name": "vfs_remember",
   "arguments": {
@@ -464,6 +498,7 @@ if user:
 
 ## Versions
 
+- **v0.8.0** - Two-phase retrieval (vfs_browse + vfs_fetch)
 - **v0.7.0** - Linux-style permissions (rwx, ownership, capabilities, API keys)
 - **v0.6.0** - Advanced features (10 features including sync, tags, export)
 - **v0.5.0** - Multi-agent support (append-only, audit log)
