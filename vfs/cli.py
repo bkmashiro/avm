@@ -425,6 +425,69 @@ def cmd_synthesize(args):
     print(doc)
 
 
+def cmd_memory_recall(args):
+    """Agent Memory 检索"""
+    from .agent_memory import ScoringStrategy
+    
+    vfs = get_vfs(args.config, args.db)
+    memory = vfs.agent_memory(args.agent)
+    
+    strategy = ScoringStrategy(args.strategy) if args.strategy else None
+    
+    result = memory.recall(
+        args.query,
+        max_tokens=args.max_tokens,
+        strategy=strategy,
+        include_shared=not args.private_only,
+    )
+    
+    print(result)
+
+
+def cmd_memory_remember(args):
+    """写入 Agent Memory"""
+    vfs = get_vfs(args.config, args.db)
+    memory = vfs.agent_memory(args.agent)
+    
+    # 获取内容
+    if args.content:
+        content = args.content
+    elif args.file:
+        content = Path(args.file).read_text()
+    else:
+        content = sys.stdin.read()
+    
+    tags = args.tags.split(",") if args.tags else None
+    
+    node = memory.remember(
+        content,
+        title=args.title,
+        importance=args.importance,
+        tags=tags,
+    )
+    
+    print(f"Remembered: {node.path} (importance={args.importance})")
+
+
+def cmd_memory_stats(args):
+    """Agent Memory 统计"""
+    vfs = get_vfs(args.config, args.db)
+    memory = vfs.agent_memory(args.agent)
+    
+    stats = memory.stats()
+    
+    if args.json:
+        print(json.dumps(stats, indent=2))
+    else:
+        print(f"Agent Memory: {stats['agent_id']}")
+        print(f"================")
+        print(f"Private memories: {stats['private_count']}")
+        print(f"Shared accessible: {stats['shared_accessible']}")
+        print(f"Private prefix: {stats['private_prefix']}")
+        print(f"Max tokens: {stats['config']['max_tokens']}")
+        print(f"Strategy: {stats['config']['strategy']}")
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="AI Virtual Filesystem (config-driven)",
@@ -539,6 +602,33 @@ def main():
     p_synth.add_argument("--limit", "-n", type=int, default=5)
     p_synth.add_argument("--title", "-t", help="Document title")
     p_synth.set_defaults(func=cmd_synthesize)
+    
+    # memory recall
+    p_mem_recall = subparsers.add_parser("memory-recall", aliases=["recall"], 
+                                          help="Agent memory recall")
+    p_mem_recall.add_argument("query", help="Query")
+    p_mem_recall.add_argument("--agent", "-a", default="default", help="Agent ID")
+    p_mem_recall.add_argument("--max-tokens", "-t", type=int, default=4000)
+    p_mem_recall.add_argument("--strategy", "-s", 
+                              choices=["importance", "recency", "relevance", "balanced"])
+    p_mem_recall.add_argument("--private-only", action="store_true")
+    p_mem_recall.set_defaults(func=cmd_memory_recall)
+    
+    # memory remember
+    p_mem_write = subparsers.add_parser("memory-remember", aliases=["remember"],
+                                         help="Write to agent memory")
+    p_mem_write.add_argument("--agent", "-a", default="default", help="Agent ID")
+    p_mem_write.add_argument("--content", "-c", help="Content")
+    p_mem_write.add_argument("--file", "-f", help="Read from file")
+    p_mem_write.add_argument("--title", "-t", help="Memory title")
+    p_mem_write.add_argument("--importance", "-i", type=float, default=0.5)
+    p_mem_write.add_argument("--tags", help="Comma-separated tags")
+    p_mem_write.set_defaults(func=cmd_memory_remember)
+    
+    # memory stats
+    p_mem_stats = subparsers.add_parser("memory-stats", help="Agent memory stats")
+    p_mem_stats.add_argument("--agent", "-a", default="default", help="Agent ID")
+    p_mem_stats.set_defaults(func=cmd_memory_stats)
     
     args = parser.parse_args()
     

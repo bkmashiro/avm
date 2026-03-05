@@ -341,3 +341,25 @@ class VFS:
             raise RuntimeError("Call enable_embedding() first")
         
         return self._embedding_store.embed_all(prefix)
+    
+    # ─── Agent Memory ─────────────────────────────────────
+    
+    def agent_memory(self, agent_id: str, 
+                     config: Dict = None) -> "AgentMemory":
+        """
+        获取 Agent Memory 实例
+        
+        Args:
+            agent_id: Agent 标识
+            config: 可选配置
+        
+        Returns:
+            AgentMemory 实例
+        """
+        from .agent_memory import AgentMemory, MemoryConfig
+        
+        mem_config = None
+        if config:
+            mem_config = MemoryConfig.from_dict(config)
+        
+        return AgentMemory(self, agent_id, mem_config)

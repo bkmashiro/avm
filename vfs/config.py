@@ -161,6 +161,8 @@ DEFAULT_CONFIG = VFSConfig(
         ProviderSpec(pattern="/live/watchlist*", type="watchlist", ttl=300),
     ],
     permissions=[
+        PermissionRule(pattern="/memory/private/*", access="rw"),
+        PermissionRule(pattern="/memory/shared/*", access="rw"),
         PermissionRule(pattern="/memory/*", access="rw"),
         PermissionRule(pattern="/live/*", access="ro"),
         PermissionRule(pattern="/research/*", access="ro"),
