@@ -528,3 +528,167 @@ class AgentMemory:
                 "strategy": self.config.default_strategy.value,
             }
         }
+    
+    # ─── 高级功能 ─────────────────────────────────────────
+    
+    def subscribe(self, pattern: str, callback) -> str:
+        """
+        订阅路径变化
+        
+        Args:
+            pattern: Glob 模式 (e.g., "/memory/shared/market/*")
+            callback: 回调函数 (event) -> None
+        
+        Returns:
+            订阅 ID（用于取消订阅）
+        """
+        from .advanced import SubscriptionManager
+        
+        if not hasattr(self.vfs, '_subscription_manager'):
+            self.vfs._subscription_manager = SubscriptionManager()
+        
+        return self.vfs._subscription_manager.subscribe(
+            pattern, callback, subscriber_id=self.agent_id
+        )
+    
+    def unsubscribe(self, pattern: str = None):
+        """取消订阅"""
+        if hasattr(self.vfs, '_subscription_manager'):
+            self.vfs._subscription_manager.unsubscribe(self.agent_id, pattern)
+    
+    def recall_recent(self, query: str, 
+                      time_range: str = "last_7d",
+                      max_tokens: int = None) -> str:
+        """
+        时间范围内的记忆检索
+        
+        Args:
+            query: 查询文本
+            time_range: 时间范围 ("last_24h", "last_7d", "last_30d", "today")
+            max_tokens: 最大 token 数
+        """
+        from .advanced import TimeQuery
+        
+        time_query = TimeQuery(self.vfs.store)
+        recent_nodes = time_query.query(
+            prefix="/memory",
+            time_range=time_range,
+            limit=50
+        )
+        
+        # 过滤权限
+        recent_nodes = [n for n in recent_nodes if self._can_read(n.path)]
+        
+        # 转换为 scored nodes 并合成
+        max_tokens = max_tokens or self.config.default_max_tokens
+        scored = []
+        
+        for node in recent_nodes:
+            sn = ScoredNode(node=node)
+            sn.importance_score = node.meta.get("importance", 0.5)
+            sn.recency_score = 1.0  # 已经是最近的
+            sn.relevance_score = 0.5  # 时间查询不考虑相关性
+            sn.final_score = sn.importance_score
+            sn.summary = self._extract_summary(node)
+            sn.estimated_tokens = self._estimate_tokens(sn.summary)
+            scored.append(sn)
+        
+        selected = self._select_within_budget(scored, max_tokens)
+        return self._compact_synthesis(selected, f"{query} (time: {time_range})", 
+                                       max_tokens, ScoringStrategy.IMPORTANCE)
+    
+    def remember_derived(self, content: str,
+                         derived_from: List[str],
+                         title: str = None,
+                         reasoning: str = None,
+                         **kwargs) -> VFSNode:
+        """
+        写入推导记忆，自动建立来源链接
+        
+        Args:
+            content: 推导/结论内容
+            derived_from: 来源路径列表
+            title: 标题
+            reasoning: 推理说明
+        """
+        from .advanced import DerivedLinkManager
+        
+        # 写入记忆
+        node = self.remember(content, title=title, **kwargs)
+        
+        # 建立推导链接
+        link_mgr = DerivedLinkManager(self.vfs.store)
+        link_mgr.link_derived(node.path, derived_from, reasoning)
+        
+        return node
+    
+    def check_duplicate(self, content: str, 
+                        threshold: float = 0.85) -> "DedupeResult":
+        """
+        检查是否与现有记忆重复
+        
+        Args:
+            content: 内容
+            threshold: 相似度阈值 (0.85 保守, 0.95 严格)
+        
+        Returns:
+            DedupeResult
+        """
+        from .advanced import SemanticDeduplicator, DedupeResult
+        
+        embedding_store = getattr(self.vfs, '_embedding_store', None)
+        deduper = SemanticDeduplicator(self.vfs.store, embedding_store)
+        
+        return deduper.check_duplicate(
+            content, 
+            prefix=self.private_prefix,
+            threshold=threshold
+        )
+    
+    def remember_if_new(self, content: str, 
+                        threshold: float = 0.85,
+                        **kwargs) -> Optional[VFSNode]:
+        """
+        仅在内容不重复时写入
+        
+        Returns:
+            VFSNode if written, None if duplicate
+        """
+        result = self.check_duplicate(content, threshold)
+        
+        if result.is_duplicate:
+            return None
+        
+        return self.remember(content, **kwargs)
+    
+    def get_cold_memories(self, threshold: float = 0.1,
+                          limit: int = 20) -> List[VFSNode]:
+        """
+        获取已衰减的冷记忆
+        
+        Args:
+            threshold: 衰减后权重阈值
+            limit: 最大数量
+        """
+        from .advanced import MemoryDecay
+        
+        decay = MemoryDecay(self.vfs.store)
+        return decay.get_cold_memories(
+            prefix=self.private_prefix,
+            threshold=threshold,
+            limit=limit
+        )
+    
+    def compact_versions(self, path: str, 
+                         keep_recent: int = 3) -> "CompactionResult":
+        """
+        压缩路径的历史版本
+        
+        Args:
+            path: 要压缩的路径
+            keep_recent: 保留最近几个版本
+        """
+        from .advanced import MemoryCompactor
+        
+        compactor = MemoryCompactor(self.vfs.store)
+        return compactor.compact(path, keep_recent)

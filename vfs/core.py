@@ -404,3 +404,48 @@ class VFS:
             self._audit_log = AuditLog(self.store)
         
         return self._audit_log.query(agent_id, path_prefix, limit=limit)
+    
+    # ─── 高级功能 ─────────────────────────────────────────
+    
+    def subscribe(self, pattern: str, callback) -> str:
+        """订阅路径变化"""
+        from .advanced import SubscriptionManager
+        
+        if not hasattr(self, '_subscription_manager'):
+            self._subscription_manager = SubscriptionManager()
+        
+        return self._subscription_manager.subscribe(pattern, callback)
+    
+    def _notify_subscribers(self, path: str, event_type: str, agent_id: str = None):
+        """通知订阅者（内部方法）"""
+        if hasattr(self, '_subscription_manager'):
+            from .advanced import MemoryEvent, EventType
+            
+            event = MemoryEvent(
+                event_type=EventType(event_type),
+                path=path,
+                agent_id=agent_id or "system",
+            )
+            self._subscription_manager.notify(event)
+    
+    def query_time(self, prefix: str = "/memory",
+                   time_range: str = None,
+                   after: str = None,
+                   before: str = None,
+                   limit: int = 100) -> List[VFSNode]:
+        """时间范围查询"""
+        from .advanced import TimeQuery
+        from datetime import datetime
+        
+        query = TimeQuery(self.store)
+        
+        after_dt = datetime.fromisoformat(after) if after else None
+        before_dt = datetime.fromisoformat(before) if before else None
+        
+        return query.query(
+            prefix=prefix,
+            after=after_dt,
+            before=before_dt,
+            time_range=time_range,
+            limit=limit
+        )
