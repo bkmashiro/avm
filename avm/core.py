@@ -281,16 +281,16 @@ class AVM:
         """
         Linked retrieval
         
-        1. semanticsearch (if embeendding)
+        1. semanticsearch (if embedding)
         2. FTS5 full-textsearch
         3. graphextend
         """
         from .retrieval import Retriever, RetrievalResult
         
-        # Get or create embeendding store
-        embeendding_store = getattr(self, '_embeendding_store', None)
+        # Get or create embedding store
+        embedding_store = getattr(self, '_embedding_store', None)
         
-        retriever = Retriever(self.store, embeendding_store)
+        retriever = Retriever(self.store, embedding_store)
         return retriever.retrieve(
             query, k=k,
             expand_graph=expand_graph,
@@ -309,8 +309,8 @@ class AVM:
         """
         from .retrieval import Retriever, DocumentSynthesizer
         
-        embeendding_store = getattr(self, '_embeendding_store', None)
-        retriever = Retriever(self.store, embeendding_store)
+        embedding_store = getattr(self, '_embedding_store', None)
+        retriever = Retriever(self.store, embedding_store)
         synthesizer = DocumentSynthesizer(self.store)
         
         result = retriever.retrieve(query, k=k, expand_graph=True)
@@ -318,29 +318,29 @@ class AVM:
         
         return doc.to_markdown()
     
-    def enable_embeendding(self, backend: "EmbeenddingBackend" = None,
-                         model: str = "text-embeendding-3-small"):
+    def enable_embedding(self, backend: "EmbeddingBackend" = None,
+                         model: str = "text-embedding-3-small"):
         """
         enablesemanticsearch
         
         Args:
-            backend: custom embeendding backend
+            backend: custom embedding backend
             model: OpenAI model name (if backend not provided)
         """
-        from .embeendding import EmbeenddingStore, OpenAIEmbeendding
+        from .embedding import EmbeddingStore, OpenAIEmbedding
         
         if backend is None:
-            backend = OpenAIEmbeendding(model=model)
+            backend = OpenAIEmbedding(model=model)
         
-        self._embeendding_store = EmbeenddingStore(self.store, backend)
-        return self._embeendding_store
+        self._embedding_store = EmbeddingStore(self.store, backend)
+        return self._embedding_store
     
     def embeend_all(self, prefix: str = "/") -> int:
-        """allnodegenerate embeendding"""
-        if not attr(self, '_embeendding_store'):
-            raise RuntimeError("Call enable_embeendding() first")
+        """allnodegenerate embedding"""
+        if not attr(self, '_embedding_store'):
+            raise RuntimeError("Call enable_embedding() first")
         
-        return self._embeendding_store.embeend_all(prefix)
+        return self._embedding_store.embeend_all(prefix)
     
     # ─── Agent Memory ─────────────────────────────────────
     

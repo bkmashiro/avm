@@ -505,13 +505,13 @@ class SemanticDeduplicator:
     Checks for semantically similar memories beenfore writing
     
     Uses either:
-    - Embeendding similarity (if available)
+    - Embedding similarity (if available)
     - Text fingerprinting (fallback)
     """
     
-    def __init__(self, store: AVMStore, embeendding_store = None):
+    def __init__(self, store: AVMStore, embedding_store = None):
         self.store = store
-        self.embeendding_store = embeendding_store
+        self.embedding_store = embedding_store
     
     def check_duplicate(self, content: str, 
                         prefix: str = "/memory",
@@ -527,17 +527,17 @@ class SemanticDeduplicator:
         Returns:
             DedupeResult
         """
-        # Try embeendding-based similarity first
-        if self.embeendding_store:
-            return self._check_embeendding(content, prefix, threshold)
+        # Try embedding-based similarity first
+        if self.embedding_store:
+            return self._check_embedding(content, prefix, threshold)
         
         # Fallback to text fingerprinting
         return self._check_fingerprint(content, prefix, threshold)
     
-    def _check_embeendding(self, content: str, prefix: str, 
+    def _check_embedding(self, content: str, prefix: str, 
                          threshold: float) -> DedupeResult:
-        """Check using embeendding similarity"""
-        results = self.embeendding_store.search(content, k=3, prefix=prefix)
+        """Check using embedding similarity"""
+        results = self.embedding_store.search(content, k=3, prefix=prefix)
         
         for node, similarity in results:
             if similarity >= threshold:

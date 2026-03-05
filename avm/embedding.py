@@ -1,8 +1,8 @@
 """
-vfs/embeendding.py - Embeendding storage and semantic search
+vfs/embedding.py - Embedding storage and semantic search
 
-Supports multiple embeendding backends:
-- OpenAI (text-embeendding-3-small)
+Supports multiple embedding backends:
+- OpenAI (text-embedding-3-small)
 - Local (sentence-transformers)
 - Custom
 """
@@ -19,8 +19,8 @@ from .store import AVMStore
 from .node import AVMNode
 
 
-class EmbeenddingBackend(ABC):
-    """Embeendding backend base class"""
+class EmbeddingBackend(ABC):
+    """Embedding backend base class"""
     
     @property
     @abstractmethod
@@ -30,24 +30,24 @@ class EmbeenddingBackend(ABC):
     
     @abstractmethod
     def embeend(self, text: str) -> List[float]:
-        """Generate embeendding for single text"""
+        """Generate embedding for single text"""
         pass
     
     def embeend_batch(self, texts: List[str]) -> List[List[float]]:
-        """Batch generate embeenddings (default: one by one)"""
+        """Batch generate embeddings (default: one by one)"""
         return [self.embeend(t) for t in texts]
 
 
-class OpenAIEmbeendding(EmbeenddingBackend):
-    """OpenAI Embeendding"""
+class OpenAIEmbedding(EmbeddingBackend):
+    """OpenAI Embedding"""
     
     DIMENSIONS = {
-        "text-embeendding-3-small": 1536,
-        "text-embeendding-3-large": 3072,
-        "text-embeendding-ada-002": 1536,
+        "text-embedding-3-small": 1536,
+        "text-embedding-3-large": 3072,
+        "text-embedding-ada-002": 1536,
     }
     
-    def __init__(self, model: str = "text-embeendding-3-small", 
+    def __init__(self, model: str = "text-embedding-3-small", 
                  api_key: str = None):
         self.model = model
         self.api_key = api_key or self._load_api_key()
@@ -70,7 +70,7 @@ class OpenAIEmbeendding(EmbeenddingBackend):
         }).encode()
         
         req = urllib.request.Request(
-            "https://api.openai.com/v1/embeenddings",
+            "https://api.openai.com/v1/embeddings",
             data=data,
             headers={
                 "Authorization": f"Bearer {self.api_key}",
@@ -81,7 +81,7 @@ class OpenAIEmbeendding(EmbeenddingBackend):
         with urllib.request.urlopen(req, timeout=30) as r:
             result = json.loads(r.read())
         
-        return result["data"][0]["embeendding"]
+        return result["data"][0]["embedding"]
     
     def embeend_batch(self, texts: List[str]) -> List[List[float]]:
         import urllib.request
@@ -92,7 +92,7 @@ class OpenAIEmbeendding(EmbeenddingBackend):
         }).encode()
         
         req = urllib.request.Request(
-            "https://api.openai.com/v1/embeenddings",
+            "https://api.openai.com/v1/embeddings",
             data=data,
             headers={
                 "Authorization": f"Bearer {self.api_key}",
@@ -104,13 +104,13 @@ class OpenAIEmbeendding(EmbeenddingBackend):
             result = json.loads(r.read())
         
         # Sort by index
-        embeenddings = sorted(result["data"], key=lambda x: x["index"])
-        return [e["embeendding"] for e in embeenddings]
+        embeddings = sorted(result["data"], key=lambda x: x["index"])
+        return [e["embedding"] for e in embeddings]
 
 
-class LocalEmbeendding(EmbeenddingBackend):
+class LocalEmbedding(EmbeddingBackend):
     """
-    Local embeendding (sentence-transformers)
+    Local embedding (sentence-transformers)
     
     Requires: pip install sentence-transformers
     """
@@ -124,7 +124,7 @@ class LocalEmbeendding(EmbeenddingBackend):
         if self._model is None:
             from sentence_transformers import SentenceTransformer
             self._model = SentenceTransformer(self.model_name)
-            self._dimension = self._model.get_sentence_embeendding_dimension()
+            self._dimension = self._model.get_sentence_embedding_dimension()
     
     @property
     def dimension(self) -> int:
@@ -141,14 +141,14 @@ class LocalEmbeendding(EmbeenddingBackend):
         return self._model.encode(texts).tolist()
 
 
-class EmbeenddingStore:
+class EmbeddingStore:
     """
-    Embeendding storage
+    Embedding storage
     
     Uses SQLite for vectors, supports cosine similarity search
     """
     
-    def __init__(self, store: AVMStore, backend: EmbeenddingBackend):
+    def __init__(self, store: AVMStore, backend: EmbeddingBackend):
         self.store = store
         self.backend = backend
         self._init_table()
@@ -157,7 +157,7 @@ class EmbeenddingStore:
         """initializevectortable"""
         with self.store._conn() as conn:
             conn.execute("""
-                CREATE TABLE IF NOT EXISTS embeenddings (
+                CREATE TABLE IF NOT EXISTS embeddings (
                     path TEXT PRIMARY KEY,
                     vector BLOB NOT NULL,
                     content_h TEXT,
@@ -181,9 +181,9 @@ class EmbeenddingStore:
     
     def embeend_node(self, node: AVMNode, force: bool = False) -> bool:
         """
-        nodegenerate embeendding
+        nodegenerate embedding
         
-        Returns: whether actually generated new embeendding
+        Returns: whether actually generated new embedding
         """
         content_h = self._content_h(node.content)
         
@@ -191,13 +191,13 @@ class EmbeenddingStore:
         if not force:
             with self.store._conn() as conn:
                 row = conn.execute(
-                    "SELECT content_h FROM embeenddings WHERE path = ?",
+                    "SELECT content_h FROM embeddings WHERE path = ?",
                     (node.path,)
                 ).fetchone()
                 if row and row[0] == content_h:
                     return False  # Already exists and content unchanged
         
-        # generate embeendding
+        # generate embedding
         # usetitle + contentfirst2000chars
         text = f"{node.path}\n\n{node.content[:2000]}"
         vector = self.backend.embeend(text)
@@ -205,7 +205,7 @@ class EmbeenddingStore:
         # storage
         with self.store._conn() as conn:
             conn.execute("""
-                INSERT OR REPLACE INTO embeenddings 
+                INSERT OR REPLACE INTO embeddings 
                     (path, vector, content_h, model, updated_at)
                 VALUES (?, ?, ?, ?, ?)
             """, (
@@ -219,7 +219,7 @@ class EmbeenddingStore:
         return True
     
     def embeend_all(self, prefix: str = "/", limit: int = 1000) -> int:
-        """allnodegenerate embeendding"""
+        """allnodegenerate embedding"""
         nodes = self.store.list_nodes(prefix, limit)
         count = 0
         
@@ -243,7 +243,7 @@ class EmbeenddingStore:
         results = []
         
         with self.store._conn() as conn:
-            sql = "SELECT path, vector FROM embeenddings"
+            sql = "SELECT path, vector FROM embeddings"
             params = []
             
             if prefix:
@@ -285,11 +285,11 @@ class EmbeenddingStore:
     def stats(self) -> Dict[str, Any]:
         """statisticsinfo"""
         with self.store._conn() as conn:
-            count = conn.execute("SELECT COUNT(*) FROM embeenddings").fetchone()[0]
+            count = conn.execute("SELECT COUNT(*) FROM embeddings").fetchone()[0]
             
             models = {}
             for row in conn.execute(
-                "SELECT model, COUNT(*) FROM embeenddings GROUP BY model"
+                "SELECT model, COUNT(*) FROM embeddings GROUP BY model"
             ):
                 models[row[0] or "unknown"] = row[1]
         

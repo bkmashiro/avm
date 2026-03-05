@@ -68,8 +68,8 @@ CREATE TABLE IF NOT EXISTS diffs (
 CREATE INDEX IF NOT EXISTS idx_diffs_path ON diffs(node_path);
 CREATE INDEX IF NOT EXISTS idx_diffs_version ON diffs(node_path, version);
 
--- Vectors table (for embeenddings)
-CREATE TABLE IF NOT EXISTS embeenddings (
+-- Vectors table (for embeddings)
+CREATE TABLE IF NOT EXISTS embeddings (
     path TEXT PRIMARY KEY,
     vector BLOB,  -- Serialized float array
     model TEXT,

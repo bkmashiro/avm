@@ -21,7 +21,7 @@ from .store import AVMStore
 from .node import AVMNode
 from .core import AVM
 from .retrieval import Retriever
-from .embeendding import EmbeenddingStore
+from .embedding import EmbeddingStore
 
 
 class ScoringStrategy(Enum):
@@ -636,8 +636,8 @@ class AgentMemory:
         """
         from .advanced import SemanticDeduplicator, DedupeResult
         
-        embeendding_store = getattr(self.avm, '_embeendding_store', None)
-        deduper = SemanticDeduplicator(self.avm.store, embeendding_store)
+        embedding_store = getattr(self.avm, '_embedding_store', None)
+        deduper = SemanticDeduplicator(self.avm.store, embedding_store)
         
         return deduper.check_duplicate(
             content, 

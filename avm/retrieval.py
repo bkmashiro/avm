@@ -2,7 +2,7 @@
 avm/retrieval.py - Linked retrieval and dynamic document building
 
 features:
-1. semanticsearch (embeendding)
+1. semanticsearch (embedding)
 2. graphextend (relatednode)
 3. Dynamic document synthesis
 """
@@ -14,7 +14,7 @@ from typing import List, Dict, Any, Optional, Set, Tuple
 from .store import AVMStore
 from .node import AVMNode
 from .graph import EdgeType
-from .embeendding import EmbeenddingStore, EmbeenddingBackend
+from .embedding import EmbeddingStore, EmbeddingBackend
 
 
 @dataclass
@@ -55,16 +55,16 @@ class Retriever:
     Linked retriever
     
     supports:
-    - semanticsearch (requires embeendding)
+    - semanticsearch (requires embedding)
     - FTS5 full-textsearch (fallback)
     - graphextend
     - resultfusion
     """
     
     def __init__(self, store: AVMStore, 
-                 embeendding_store: EmbeenddingStore = None):
+                 embedding_store: EmbeddingStore = None):
         self.store = store
-        self.embeendding_store = embeendding_store
+        self.embedding_store = embedding_store
     
     def retrieve(self, query: str,
                  k: int = 5,
@@ -86,9 +86,9 @@ class Retriever:
         sources = {}
         seen_paths: Set[str] = set()
         
-        # 1. semanticsearch (if embeendding)
-        if self.embeendding_store:
-            semantic_results = self.embeendding_store.search(query, k=k, prefix=prefix)
+        # 1. semanticsearch (if embedding)
+        if self.embedding_store:
+            semantic_results = self.embedding_store.search(query, k=k, prefix=prefix)
             for node, score in semantic_results:
                 if node.path not in seen_paths:
                     nodes.append(node)
