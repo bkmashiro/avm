@@ -441,67 +441,267 @@ class AVMFuse(Operations):
         return 0
 
 
-def main():
-    """Main entry point for avm-mount."""
+import signal
+import subprocess
+import sys
+
+# PID file location
+def _pid_file(mountpoint: str) -> Path:
+    """Get PID file path for a mountpoint."""
+    safe_name = mountpoint.replace('/', '_').strip('_')
+    return Path.home() / '.local' / 'share' / 'avm' / 'mounts' / f'{safe_name}.pid'
+
+
+def _is_mounted(mountpoint: str) -> bool:
+    """Check if mountpoint is currently mounted."""
+    try:
+        result = subprocess.run(['mount'], capture_output=True, text=True)
+        return mountpoint in result.stdout
+    except Exception:
+        return False
+
+
+def _get_pid(mountpoint: str) -> Optional[int]:
+    """Get PID of mount process."""
+    pid_file = _pid_file(mountpoint)
+    if pid_file.exists():
+        try:
+            return int(pid_file.read_text().strip())
+        except (ValueError, IOError):
+            pass
+    return None
+
+
+def _write_pid(mountpoint: str, pid: int):
+    """Write PID file."""
+    pid_file = _pid_file(mountpoint)
+    pid_file.parent.mkdir(parents=True, exist_ok=True)
+    pid_file.write_text(str(pid))
+
+
+def _remove_pid(mountpoint: str):
+    """Remove PID file."""
+    pid_file = _pid_file(mountpoint)
+    if pid_file.exists():
+        pid_file.unlink()
+
+
+def cmd_mount(args):
+    """Mount AVM filesystem."""
     if not HAS_FUSE:
         print("Error: fusepy not installed. Run: pip install fusepy")
-        print("Also ensure FUSE is installed on your system:")
+        print("Also ensure FUSE is installed:")
         print("  macOS: brew install macfuse")
         print("  Linux: apt install fuse3")
         return 1
     
-    parser = argparse.ArgumentParser(
-        description="Mount AVM as a FUSE filesystem",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
-Virtual Nodes:
-  /path/file.md:meta    Metadata (JSON)
-  /path/file.md:links   Related nodes
-  /path/file.md:tags    Tags (comma-separated)
-  /path/:list           Directory listing
-  /path/:search?q=X     Search results
-  /path/:recall?q=X     Token-aware recall
-
-Examples:
-  avm-mount /mnt/avm
-  avm-mount /mnt/avm --user akashi
-  cat /mnt/avm/memory/note.md:meta
-  cat "/mnt/avm/memory/:search?q=RSI"
-        """
-    )
-    parser.add_argument("mountpoint", help="Mount point path")
-    parser.add_argument("--user", "-u", help="User name for recall")
-    parser.add_argument("--db", "-d", help="Database path")
-    parser.add_argument("--foreground", "-f", action="store_true", help="Run in foreground")
-    parser.add_argument("--debug", action="store_true", help="Enable debug output")
-    
-    args = parser.parse_args()
-    
-    # Ensure mount point exists
-    mountpoint = Path(args.mountpoint)
+    mountpoint = Path(args.mountpoint).resolve()
     mountpoint.mkdir(parents=True, exist_ok=True)
     
-    # Initialize VFS
-    from . import VFS
+    if _is_mounted(str(mountpoint)):
+        print(f"Already mounted: {mountpoint}")
+        return 1
+    
+    from . import AVM
     from .config import AVMConfig
     
     config = AVMConfig(db_path=args.db) if args.db else None
-    vfs = VFS(config=config)
+    avm = AVM(config=config)
     
-    print(f"Mounting AVM at {args.mountpoint}")
-    print(f"User: {args.user or '(none)'}")
-    print(f"Database: {vfs.store.db_path}")
-    print("Press Ctrl+C to unmount")
+    if args.daemon:
+        # Fork to background
+        pid = os.fork()
+        if pid > 0:
+            # Parent
+            _write_pid(str(mountpoint), pid)
+            print(f"Mounted: {mountpoint} (pid={pid})")
+            return 0
+        
+        # Child - detach
+        os.setsid()
+        
+        # Redirect stdio
+        sys.stdin = open(os.devnull, 'r')
+        sys.stdout = open(os.devnull, 'w')
+        sys.stderr = open(os.devnull, 'w')
+    else:
+        print(f"Mounting AVM at {mountpoint}")
+        print(f"Agent: {args.agent or '(none)'}")
+        print(f"Database: {avm.store.db_path}")
+        print("Press Ctrl+C to unmount")
     
-    # Mount
-    FUSE(
-        AVMFuse(vfs, args.user),
-        str(mountpoint),
-        foreground=args.foreground or True,
-        allow_other=False,
-        nothreads=True,
+    try:
+        FUSE(
+            AVMFuse(avm, args.agent),
+            str(mountpoint),
+            foreground=not args.daemon,
+            allow_other=False,
+            nothreads=True,
+        )
+    finally:
+        if args.daemon:
+            _remove_pid(str(mountpoint))
+    
+    return 0
+
+
+def cmd_stop(args):
+    """Stop mounted AVM filesystem."""
+    mountpoint = Path(args.mountpoint).resolve()
+    
+    if not _is_mounted(str(mountpoint)):
+        print(f"Not mounted: {mountpoint}")
+        _remove_pid(str(mountpoint))
+        return 1
+    
+    pid = _get_pid(str(mountpoint))
+    
+    # Try umount first
+    try:
+        if sys.platform == 'darwin':
+            subprocess.run(['umount', str(mountpoint)], check=True)
+        else:
+            subprocess.run(['fusermount', '-u', str(mountpoint)], check=True)
+        _remove_pid(str(mountpoint))
+        print(f"Stopped: {mountpoint}")
+        return 0
+    except subprocess.CalledProcessError:
+        pass
+    
+    # Kill process if umount failed
+    if pid:
+        try:
+            os.kill(pid, signal.SIGTERM)
+            _remove_pid(str(mountpoint))
+            print(f"Stopped: {mountpoint} (killed pid={pid})")
+            return 0
+        except ProcessLookupError:
+            _remove_pid(str(mountpoint))
+    
+    print(f"Failed to stop: {mountpoint}")
+    return 1
+
+
+def cmd_status(args):
+    """Show mount status."""
+    pid_dir = Path.home() / '.local' / 'share' / 'avm' / 'mounts'
+    
+    if not pid_dir.exists():
+        print("No mounts.")
+        return 0
+    
+    found = False
+    for pid_file in pid_dir.glob('*.pid'):
+        mountpoint = '/' + pid_file.stem.replace('_', '/')
+        pid = None
+        try:
+            pid = int(pid_file.read_text().strip())
+        except (ValueError, IOError):
+            pass
+        
+        mounted = _is_mounted(mountpoint)
+        running = False
+        if pid:
+            try:
+                os.kill(pid, 0)
+                running = True
+            except ProcessLookupError:
+                pass
+        
+        status = "mounted" if mounted else ("running" if running else "stale")
+        print(f"{mountpoint}: {status} (pid={pid})")
+        found = True
+    
+    if not found:
+        print("No mounts.")
+    
+    return 0
+
+
+def cmd_restart(args):
+    """Restart mounted AVM filesystem."""
+    # Get current settings from pid file or args
+    mountpoint = Path(args.mountpoint).resolve()
+    
+    # Stop if running
+    if _is_mounted(str(mountpoint)) or _get_pid(str(mountpoint)):
+        cmd_stop(args)
+        import time
+        time.sleep(0.5)  # Wait for cleanup
+    
+    # Start again
+    args.daemon = True
+    return cmd_mount(args)
+
+
+def main():
+    """Main entry point for avm-mount."""
+    parser = argparse.ArgumentParser(
+        description="AVM FUSE Mount Manager",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
+    
+    subparsers = parser.add_subparsers(dest='command', help='Commands')
+    
+    # mount command (default)
+    mount_parser = subparsers.add_parser('mount', help='Mount AVM filesystem')
+    mount_parser.add_argument("mountpoint", help="Mount point path")
+    mount_parser.add_argument("--agent", "-a", help="Agent ID for recall")
+    mount_parser.add_argument("--db", "-d", help="Database path")
+    mount_parser.add_argument("--daemon", action="store_true", help="Run as daemon")
+    mount_parser.add_argument("--foreground", "-f", action="store_true", help="Run in foreground (default)")
+    
+    # stop command
+    stop_parser = subparsers.add_parser('stop', help='Stop mounted filesystem')
+    stop_parser.add_argument("mountpoint", help="Mount point path")
+    
+    # status command
+    subparsers.add_parser('status', help='Show mount status')
+    
+    # restart command
+    restart_parser = subparsers.add_parser('restart', help='Restart mounted filesystem')
+    restart_parser.add_argument("mountpoint", help="Mount point path")
+    restart_parser.add_argument("--agent", "-a", help="Agent ID for recall")
+    restart_parser.add_argument("--db", "-d", help="Database path")
+    
+    args = parser.parse_args()
+    
+    # Default to mount if no command and mountpoint-like arg
+    if not args.command:
+        if len(sys.argv) > 1 and not sys.argv[1].startswith('-'):
+            # Legacy: avm-mount /path
+            args.command = 'mount'
+            args.mountpoint = sys.argv[1]
+            args.agent = None
+            args.db = None
+            args.daemon = False
+            args.foreground = True
+            # Re-parse with mount defaults
+            for i, arg in enumerate(sys.argv[2:], 2):
+                if arg in ('--agent', '-a') and i + 1 < len(sys.argv):
+                    args.agent = sys.argv[i + 1]
+                elif arg in ('--db', '-d') and i + 1 < len(sys.argv):
+                    args.db = sys.argv[i + 1]
+                elif arg == '--daemon':
+                    args.daemon = True
+                elif arg in ('--foreground', '-f'):
+                    args.foreground = True
+        else:
+            parser.print_help()
+            return 1
+    
+    if args.command == 'mount':
+        return cmd_mount(args)
+    elif args.command == 'stop':
+        return cmd_stop(args)
+    elif args.command == 'status':
+        return cmd_status(args)
+    elif args.command == 'restart':
+        return cmd_restart(args)
+    else:
+        parser.print_help()
+        return 1
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main() or 0)

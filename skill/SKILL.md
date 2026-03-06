@@ -88,14 +88,19 @@ cat "avm/:recall?q=test"
 
 ```bash
 # Mount (foreground)
-avm-mount /path/to/mount --agent {id}
+avm-mount mount /path --agent {id}
 
 # Mount (daemon)
-avm-mount /path/to/mount --agent {id} --daemon
+avm-mount mount /path --agent {id} --daemon
 
-# Unmount
-fusermount -u /path/to/mount  # Linux
-umount /path/to/mount          # macOS
+# Stop
+avm-mount stop /path
+
+# Status
+avm-mount status
+
+# Restart
+avm-mount restart /path --agent {id}
 
 # Import existing memories
 avm import /path/to/*.md --agent {id}
