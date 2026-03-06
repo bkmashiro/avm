@@ -247,6 +247,8 @@ class AVMFuse(Operations):
             offset = int(params.get('offset', 0)) if params else 0
             query = params.get('q', '') if params else ''
             
+            tag_filter = params.get('tag', '') if params else ''
+            
             if query:
                 # Search mode: use full-text search
                 results = self.vfs.search(query, limit=(limit + offset) * 5)
@@ -254,6 +256,11 @@ class AVMFuse(Operations):
             else:
                 # List mode: get nodes from path
                 nodes = self.vfs.list(real_path, limit=(limit + offset) * 5)
+            
+            # Filter by tag if specified
+            if tag_filter:
+                nodes = [n for n in nodes 
+                        if tag_filter in n.meta.get('tags', [])]
             lines = []
             skipped = 0
             for node in nodes:
