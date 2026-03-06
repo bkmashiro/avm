@@ -112,12 +112,16 @@ class AVMFuse(Operations):
             return json.dumps(node.meta, indent=2, default=str) + '\n'
         
         elif suffix == ':links':
-            edges = self.vfs.store.get_edges(real_path)
-            lines = []
-            for edge in edges:
-                target = edge.target if edge.source == real_path else edge.source
-                lines.append(f"{target} ({edge.edge_type})")
-            return '\n'.join(lines) + '\n' if lines else '(no links)\n'
+            try:
+                edges = self.vfs.links(real_path, direction="both")
+                lines = []
+                for edge in edges:
+                    target = edge.get('target') or edge.get('source', '?')
+                    rel_type = edge.get('type', 'related')
+                    lines.append(f"{target} ({rel_type})")
+                return '\n'.join(lines) + '\n' if lines else '(no links)\n'
+            except Exception:
+                return '(no links)\n'
         
         elif suffix == ':tags':
             node = self.vfs.read(real_path)
