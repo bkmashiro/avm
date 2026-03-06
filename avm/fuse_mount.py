@@ -76,22 +76,25 @@ class AVMFuse(Operations):
             /memory/:search?q=RSI -> ('/memory', ':search', {'q': 'RSI'})
             /@abc -> resolved shortcut path
         """
-        # Handle shortcut (@xxx)
-        if path.startswith('/@'):
-            shortcut = path[2:]  # Remove /@
-            # Check for suffix on shortcut (e.g., /@abc:meta)
-            suffix_part = None
-            for suffix in self.VIRTUAL_SUFFIXES:
-                if shortcut.endswith(suffix):
-                    suffix_part = suffix
-                    shortcut = shortcut[:-len(suffix)]
-                    break
-            # Resolve shortcut to real path
-            real_path = self._resolve_shortcut(shortcut)
-            if real_path:
-                return (real_path, suffix_part, None)
-            # Shortcut not found - return as-is for error handling
-            return (path, None, None)
+        # Handle shortcut (@xxx) - check if any path component starts with @
+        # e.g., /@abc or /memory/private/@abc
+        parts = path.split('/')
+        for i, part in enumerate(parts):
+            if part.startswith('@') and len(part) > 1:
+                shortcut = part[1:]  # Remove @
+                # Check for suffix on shortcut (e.g., @abc:meta)
+                suffix_part = None
+                for suffix in self.VIRTUAL_SUFFIXES:
+                    if shortcut.endswith(suffix):
+                        suffix_part = suffix
+                        shortcut = shortcut[:-len(suffix)]
+                        break
+                # Resolve shortcut to real path
+                real_path = self._resolve_shortcut(shortcut)
+                if real_path:
+                    return (real_path, suffix_part, None)
+                # Shortcut not found - return as-is for error handling
+                return (path, None, None)
         
         # Check for query params
         if '?' in path:
