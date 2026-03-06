@@ -244,12 +244,22 @@ class AVMFuse(Operations):
         
         elif suffix == ':list':
             limit = int(params.get('limit', 50)) if params else 50
-            nodes = self.vfs.list(real_path, limit=limit)
+            offset = int(params.get('offset', 0)) if params else 0
+            # Get more nodes to account for filtering (5x to be safe)
+            nodes = self.vfs.list(real_path, limit=(limit + offset) * 5)
             lines = []
+            skipped = 0
             for node in nodes:
-                # Filter by access permission
+                # Filter by access permission first
                 if not self._can_see_shared(node):
                     continue
+                # Then apply offset
+                if skipped < offset:
+                    skipped += 1
+                    continue
+                # Stop at limit
+                if len(lines) >= limit:
+                    break
                 # Get or generate shortcut
                 shortcut = node.meta.get('shortcut')
                 if not shortcut:
