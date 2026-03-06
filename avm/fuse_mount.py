@@ -506,7 +506,6 @@ def cmd_mount(args):
     from .config import AVMConfig
     
     config = AVMConfig(db_path=args.db) if args.db else None
-    avm = AVM(config=config)
     
     if args.daemon:
         # Fork to background
@@ -524,7 +523,11 @@ def cmd_mount(args):
         sys.stdin = open(os.devnull, 'r')
         sys.stdout = open(os.devnull, 'w')
         sys.stderr = open(os.devnull, 'w')
-    else:
+    
+    # Create AVM AFTER fork (SQLite connections can't cross fork)
+    avm = AVM(config=config)
+    
+    if not args.daemon:
         print(f"Mounting AVM at {mountpoint}")
         print(f"Agent: {args.agent or '(none)'}")
         print(f"Database: {avm.store.db_path}")
