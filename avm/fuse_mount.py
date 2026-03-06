@@ -33,8 +33,11 @@ from pathlib import Path
 try:
     from fuse import FUSE, FuseOSError, Operations
     HAS_FUSE = True
-except ImportError:
+except (ImportError, OSError):
+    # ImportError: fusepy not installed
+    # OSError: libfuse not found (common in CI environments)
     HAS_FUSE = False
+    FUSE = None
     # Stub for when fuse is not installed
     class Operations:
         pass

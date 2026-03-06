@@ -11,6 +11,15 @@ from unittest.mock import MagicMock, patch
 from avm import AVM
 
 # Try to import fuse-related items, skip if not available
+# This handles both "fusepy not installed" and "libfuse not found" cases
+HAS_FUSE = False
+AVMFuse = None
+_pid_file = None
+_write_pid = None
+_get_pid = None
+_remove_pid = None
+_is_mounted = None
+
 try:
     from avm.fuse_mount import (
         AVMFuse,
@@ -21,11 +30,12 @@ try:
         _is_mounted,
         HAS_FUSE,
     )
-except ImportError:
-    HAS_FUSE = False
-    AVMFuse = None
+except (ImportError, OSError):
+    # ImportError: fusepy not installed
+    # OSError: libfuse not found
+    pass
 
-pytestmark = pytest.mark.skipif(not HAS_FUSE, reason="fusepy not installed")
+pytestmark = pytest.mark.skipif(not HAS_FUSE, reason="FUSE not available (fusepy or libfuse missing)")
 
 
 @pytest.fixture
