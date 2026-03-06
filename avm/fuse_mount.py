@@ -74,7 +74,25 @@ class AVMFuse(Operations):
             /memory/note.md -> ('/memory/note.md', None, None)
             /memory/note.md:meta -> ('/memory/note.md', ':meta', None)
             /memory/:search?q=RSI -> ('/memory', ':search', {'q': 'RSI'})
+            /@abc -> resolved shortcut path
         """
+        # Handle shortcut (@xxx)
+        if path.startswith('/@'):
+            shortcut = path[2:]  # Remove /@
+            # Check for suffix on shortcut (e.g., /@abc:meta)
+            suffix_part = None
+            for suffix in self.VIRTUAL_SUFFIXES:
+                if shortcut.endswith(suffix):
+                    suffix_part = suffix
+                    shortcut = shortcut[:-len(suffix)]
+                    break
+            # Resolve shortcut to real path
+            real_path = self._resolve_shortcut(shortcut)
+            if real_path:
+                return (real_path, suffix_part, None)
+            # Shortcut not found - return as-is for error handling
+            return (path, None, None)
+        
         # Check for query params
         if '?' in path:
             base, query_str = path.split('?', 1)
@@ -101,6 +119,27 @@ class AVMFuse(Operations):
         """Check if path is a virtual node."""
         _, suffix, _ = self._parse_path(path)
         return suffix is not None
+    
+    def _resolve_shortcut(self, shortcut: str) -> str:
+        """Resolve shortcut to real path."""
+        # Search for node with this shortcut in meta
+        nodes = self.vfs.store.list_nodes("/memory", limit=1000)
+        for node in nodes:
+            if node.meta.get('shortcut') == shortcut:
+                return node.path
+        return None
+    
+    def _generate_shortcut(self, path: str) -> str:
+        """Generate a unique shortcut for a path."""
+        import hashlib
+        # Use hash of path for consistent shortcuts
+        h = hashlib.md5(path.encode()).hexdigest()[:3]
+        # Check for collision
+        existing = self._resolve_shortcut(h)
+        if existing and existing != path:
+            # Collision - extend hash
+            h = hashlib.md5(path.encode()).hexdigest()[:4]
+        return h
     
     def _can_see_shared(self, node) -> bool:
         """Check if current agent can see this shared node."""
@@ -195,12 +234,27 @@ class AVMFuse(Operations):
             return '\n'.join(lines) + '\n' if lines else '(no history)\n'
         
         elif suffix == ':list':
-            nodes = self.vfs.list(real_path)
+            limit = int(params.get('limit', 50)) if params else 50
+            nodes = self.vfs.list(real_path, limit=limit)
             lines = []
             for node in nodes:
-                name = node.path.split('/')[-1]
-                lines.append(name)
-            return '\n'.join(sorted(lines)) + '\n' if lines else '\n'
+                # Filter by access permission
+                if not self._can_see_shared(node):
+                    continue
+                # Get or generate shortcut
+                shortcut = node.meta.get('shortcut')
+                if not shortcut:
+                    shortcut = self._generate_shortcut(node.path)
+                    # Store shortcut in meta
+                    node.meta['shortcut'] = shortcut
+                    self.vfs.write(node.path, node.content, meta=node.meta)
+                # Get relative path from real_path
+                if node.path.startswith(real_path):
+                    rel_path = node.path[len(real_path):].lstrip('/')
+                else:
+                    rel_path = node.path
+                lines.append(f"@{shortcut}  {rel_path}")
+            return '\n'.join(lines) + '\n' if lines else '\n'
         
         elif suffix == ':stats':
             stats = self.vfs.stats()
@@ -456,6 +510,11 @@ class AVMFuse(Operations):
     
     def create(self, path, mode, fi=None):
         """Create a new file."""
+        # Check for reserved @ prefix
+        filename = path.split('/')[-1]
+        if filename.startswith('@'):
+            raise FuseOSError(errno.EINVAL)  # Invalid argument - @ is reserved
+        
         real_path, suffix, _ = self._parse_path(path)
         
         self.fd += 1
