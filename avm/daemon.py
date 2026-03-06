@@ -489,8 +489,64 @@ def cmd_remove(args):
     return 0
 
 
+def cmd_check(args):
+    """Check configuration validity"""
+    print("Checking configuration...")
+    
+    if not MOUNTS_CONFIG.exists():
+        print(f"  ✗ Config not found: {MOUNTS_CONFIG}")
+        return 1
+    
+    try:
+        import yaml
+        data = yaml.safe_load(MOUNTS_CONFIG.read_text())
+    except Exception as e:
+        print(f"  ✗ YAML parse error: {e}")
+        return 1
+    
+    if not isinstance(data, dict) or "mounts" not in data:
+        print("  ✗ Missing 'mounts' key")
+        return 1
+    
+    mounts = data.get("mounts", [])
+    if not isinstance(mounts, list):
+        print("  ✗ 'mounts' must be a list")
+        return 1
+    
+    errors = []
+    for i, m in enumerate(mounts):
+        if not isinstance(m, dict):
+            errors.append(f"  ✗ Mount {i}: must be a dict")
+            continue
+        if "path" not in m:
+            errors.append(f"  ✗ Mount {i}: missing 'path'")
+        if "agent" not in m:
+            errors.append(f"  ✗ Mount {i}: missing 'agent'")
+        
+        # Check path exists or can be created
+        if "path" in m:
+            path = Path(m["path"]).expanduser()
+            parent = path.parent
+            if not parent.exists():
+                errors.append(f"  ✗ Mount {i}: parent dir not found: {parent}")
+    
+    if errors:
+        for e in errors:
+            print(e)
+        return 1
+    
+    print(f"  ✓ Config valid ({len(mounts)} mounts)")
+    return 0
+
+
 def cmd_reload(args):
     """Reload configuration (send SIGHUP to daemon)"""
+    # Check config first
+    print("Pre-reload check...")
+    if cmd_check(argparse.Namespace()) != 0:
+        print("\n✗ Reload aborted: invalid config")
+        return 1
+    
     if not DAEMON_PID.exists():
         print("Daemon not running")
         return 1
@@ -498,8 +554,7 @@ def cmd_reload(args):
     pid = int(DAEMON_PID.read_text().strip())
     try:
         os.kill(pid, signal.SIGHUP)
-        print(f"Sent reload signal to daemon (pid={pid})")
-        print("Daemon will reload config and update mounts")
+        print(f"\n✓ Sent reload signal to daemon (pid={pid})")
         return 0
     except ProcessLookupError:
         print("Daemon not running (stale pid)")
@@ -527,6 +582,10 @@ def main():
     # reload
     reload_parser = subparsers.add_parser("reload", help="Reload configuration")
     reload_parser.set_defaults(func=cmd_reload)
+    
+    # check
+    check_parser = subparsers.add_parser("check", help="Check config validity")
+    check_parser.set_defaults(func=cmd_check)
     
     # status
     status_parser = subparsers.add_parser("status", help="Show status")
