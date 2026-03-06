@@ -111,9 +111,42 @@ class ProviderConfig:
 class BaseHandler(ABC):
     """Base class for handlers"""
     
+    # Override these in subclasses to provide skill info for agents
+    name: str = "base"
+    description: str = "Base handler"
+    usage: str = ""
+    examples: List[str] = []
+    
     def __init__(self, config: Dict[str, Any]):
         self.config = config
         self._cache: Dict[str, tuple] = {}  # path -> (content, expires_at)
+    
+    @classmethod
+    def skill_info(cls) -> str:
+        """
+        Generate skill documentation for agents.
+        Override to customize, or set class attributes.
+        """
+        lines = [f"# {cls.name} Handler", ""]
+        
+        if cls.description:
+            lines.append(cls.description)
+            lines.append("")
+        
+        if cls.usage:
+            lines.append("## Usage")
+            lines.append("```")
+            lines.append(cls.usage)
+            lines.append("```")
+            lines.append("")
+        
+        if cls.examples:
+            lines.append("## Examples")
+            for ex in cls.examples:
+                lines.append(f"- `{ex}`")
+            lines.append("")
+        
+        return "\n".join(lines)
     
     def _expand_vars(self, template: str, context: Dict[str, Any]) -> str:
         """Expand ${VAR} in template"""
@@ -166,6 +199,17 @@ class FileHandler(BaseHandler):
         root: Base directory path
         create_dirs: Auto-create directories (default: true)
     """
+    name = "file"
+    description = "Read/write local filesystem files."
+    usage = """pattern: "/data/{filename}"
+handler: file
+config:
+  root: ~/data
+  create_dirs: true"""
+    examples = [
+        "cat /data/notes.md",
+        "echo 'content' > /data/new.md"
+    ]
     
     def read(self, path: str, context: Dict[str, Any]) -> Optional[str]:
         root = self._expand_vars(self.config.get('root', '.'), context)
@@ -226,6 +270,19 @@ class HTTPHandler(BaseHandler):
         transform: jq-style transform (optional)
         timeout: Request timeout in seconds
     """
+    name = "http"
+    description = "Fetch data from HTTP/REST APIs."
+    usage = """pattern: "/api/prices/{symbol}"
+handler: http
+config:
+  url: "https://api.example.com/prices/${symbol}"
+  headers:
+    Authorization: "Bearer ${API_KEY}"
+  ttl: 60"""
+    examples = [
+        "cat /api/prices/AAPL",
+        "cat /api/weather/london"
+    ]
     
     def read(self, path: str, context: Dict[str, Any]) -> Optional[str]:
         import urllib.request
@@ -321,6 +378,17 @@ class ScriptHandler(BaseHandler):
         cwd: Working directory
         env: Additional environment variables
     """
+    name = "script"
+    description = "Execute shell commands and return output."
+    usage = """pattern: "/system/status"
+handler: script
+config:
+  command: "uptime"
+  timeout: 10"""
+    examples = [
+        "cat /system/status",
+        "cat /system/disk"
+    ]
     
     def read(self, path: str, context: Dict[str, Any]) -> Optional[str]:
         command = self._expand_vars(self.config.get('command', ''), context)
@@ -381,6 +449,19 @@ class PluginHandler(BaseHandler):
         class: Class name (default: "Provider")
         init: Initialization arguments
     """
+    name = "plugin"
+    description = "Load and call Python plugins."
+    usage = """pattern: "/indicators/{symbol}"
+handler: plugin
+config:
+  plugin: "my_plugins.technical"
+  class: "IndicatorProvider"
+  init:
+    api_key: "${API_KEY}" """
+    examples = [
+        "cat /indicators/AAPL",
+        "cat /indicators/NVDA"
+    ]
     
     def __init__(self, config: Dict[str, Any]):
         super().__init__(config)
@@ -431,6 +512,17 @@ class SQLiteHandler(BaseHandler):
         write_query: INSERT/UPDATE query template
         list_query: List query template
     """
+    name = "sqlite"
+    description = "Query SQLite databases."
+    usage = """pattern: "/db/users/{id}"
+handler: sqlite
+config:
+  db: "~/data/app.db"
+  read_query: "SELECT * FROM users WHERE id = ${id}" """
+    examples = [
+        "cat /db/users/123",
+        "cat /db/orders/recent"
+    ]
     
     def read(self, path: str, context: Dict[str, Any]) -> Optional[str]:
         import sqlite3
@@ -486,6 +578,35 @@ HANDLERS: Dict[str, Type[BaseHandler]] = {
 def register_handler(name: str, handler_class: Type[BaseHandler]):
     """Register a custom handler"""
     HANDLERS[name] = handler_class
+
+
+def get_handlers_skill_info() -> str:
+    """
+    Get skill info for all registered handlers.
+    Agents can read this to learn how to use handlers.
+    """
+    lines = ["# Available Handlers", ""]
+    lines.append("These handlers are available for custom providers.")
+    lines.append("")
+    
+    for name, handler_class in HANDLERS.items():
+        lines.append(f"## {name}")
+        lines.append("")
+        if hasattr(handler_class, 'description'):
+            lines.append(handler_class.description)
+            lines.append("")
+        if hasattr(handler_class, 'usage') and handler_class.usage:
+            lines.append("```yaml")
+            lines.append(handler_class.usage)
+            lines.append("```")
+            lines.append("")
+        if hasattr(handler_class, 'examples') and handler_class.examples:
+            lines.append("Examples:")
+            for ex in handler_class.examples:
+                lines.append(f"- `{ex}`")
+            lines.append("")
+    
+    return "\n".join(lines)
 
 
 # ─── Provider Manager ─────────────────────────────────────

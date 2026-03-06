@@ -203,6 +203,15 @@ class AVM:
         3. Fetch via provider (with TTL cache)
         4. Or read directly from store
         """
+        # Virtual paths for skill discovery
+        if path == "/:handlers":
+            from .handlers import get_handlers_skill_info
+            return AVMNode(
+                path=path,
+                content=get_handlers_skill_info(),
+                node_type=NodeType.FILE,
+            )
+        
         if not self.config.check_permission(path, "read"):
             raise PermissionError(f"No read permission for {path}")
         
