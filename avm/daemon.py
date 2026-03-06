@@ -294,18 +294,143 @@ def cmd_stop(args):
 
 def cmd_status(args):
     """Show daemon status"""
+    print("╭─────────────────────────────────────────╮")
+    print("│         🧠 AVM Daemon Status            │")
+    print("╰─────────────────────────────────────────╯")
+    
     if not DAEMON_PID.exists():
-        print("Daemon: not running")
+        print("  Status: ⭘ not running")
     else:
         pid = int(DAEMON_PID.read_text().strip())
         try:
             os.kill(pid, 0)
-            print(f"Daemon: running (pid={pid})")
+            print(f"  Status: ● running (pid={pid})")
         except ProcessLookupError:
-            print("Daemon: not running (stale pid)")
+            print("  Status: ⭘ not running (stale pid)")
     
     daemon = AVMDaemon()
-    daemon.list_mounts()
+    config = daemon.config
+    
+    if not config.mounts:
+        print("\n  No mounts configured")
+    else:
+        print(f"\n  Mounts: {len(config.mounts)}")
+        print("  ─────────────────────────────────────")
+        for mp, mc in config.mounts.items():
+            status = "●" if mc.enabled else "○"
+            agent = mc.agent_id
+            short_path = mp.replace(str(Path.home()), "~")
+            print(f"  {status} {agent:<12} → {short_path}")
+    
+    print()
+    return 0
+
+
+def cmd_inspect(args):
+    """Inspect daemon and mounts in detail"""
+    _lazy_imports()
+    
+    print("╭─────────────────────────────────────────╮")
+    print("│         🔍 AVM Daemon Inspect           │")
+    print("╰─────────────────────────────────────────╯")
+    
+    # Daemon info
+    print("\n📋 Daemon")
+    print("  ─────────────────────────────────────")
+    if DAEMON_PID.exists():
+        pid = int(DAEMON_PID.read_text().strip())
+        try:
+            os.kill(pid, 0)
+            print(f"  PID:     {pid}")
+            print(f"  Status:  ● running")
+        except ProcessLookupError:
+            print(f"  Status:  ⭘ not running (stale pid={pid})")
+    else:
+        print("  Status:  ⭘ not running")
+    
+    print(f"  Config:  {DAEMON_CONFIG}")
+    print(f"  PID file: {DAEMON_PID}")
+    
+    # Database info
+    print("\n💾 Database")
+    print("  ─────────────────────────────────────")
+    avm = AVM()
+    db_path = avm.store.db_path
+    print(f"  Path:    {db_path}")
+    if Path(db_path).exists():
+        size = Path(db_path).stat().st_size
+        if size > 1024 * 1024:
+            print(f"  Size:    {size / 1024 / 1024:.1f} MB")
+        else:
+            print(f"  Size:    {size / 1024:.1f} KB")
+        
+        # Node count
+        try:
+            import sqlite3
+            conn = sqlite3.connect(db_path)
+            count = conn.execute("SELECT COUNT(*) FROM nodes").fetchone()[0]
+            conn.close()
+            print(f"  Nodes:   {count}")
+        except Exception:
+            pass
+    
+    # Mount details
+    daemon = AVMDaemon()
+    config = daemon.config
+    
+    print("\n📂 Mounts")
+    print("  ─────────────────────────────────────")
+    
+    if not config.mounts:
+        print("  (none configured)")
+    else:
+        # Check actual mount status
+        import subprocess
+        result = subprocess.run(["/sbin/mount"], capture_output=True, text=True)
+        mounted = result.stdout
+        
+        for mp, mc in config.mounts.items():
+            short_path = mp.replace(str(Path.home()), "~")
+            is_mounted = mp in mounted or mp.replace("/Users/", "/private/var/") in mounted
+            
+            status_icon = "●" if is_mounted else "○"
+            status_text = "mounted" if is_mounted else "not mounted"
+            
+            print(f"\n  {status_icon} {mc.agent_id}")
+            print(f"    Path:   {short_path}")
+            print(f"    Status: {status_text}")
+            
+            # Check if accessible
+            if is_mounted:
+                try:
+                    list_path = Path(mp) / ":stats"
+                    if list_path.exists():
+                        import json
+                        stats = json.loads(list_path.read_text())
+                        print(f"    Nodes:  {stats.get('nodes', '?')}")
+                except Exception:
+                    pass
+    
+    # Process tree
+    print("\n🌳 Processes")
+    print("  ─────────────────────────────────────")
+    try:
+        result = subprocess.run(
+            ["ps", "aux"], capture_output=True, text=True
+        )
+        procs = [l for l in result.stdout.split("\n") if "avm-daemon" in l and "grep" not in l]
+        if procs:
+            for p in procs:
+                parts = p.split()
+                pid = parts[1]
+                mem = parts[3]
+                print(f"  pid={pid} mem={mem}%")
+        else:
+            print("  (no daemon processes)")
+    except Exception:
+        print("  (unable to check)")
+    
+    print()
     return 0
 
 
@@ -343,6 +468,10 @@ def main():
     # status
     status_parser = subparsers.add_parser("status", help="Show status")
     status_parser.set_defaults(func=cmd_status)
+    
+    # inspect
+    inspect_parser = subparsers.add_parser("inspect", help="Detailed inspection")
+    inspect_parser.set_defaults(func=cmd_inspect)
     
     # add
     add_parser = subparsers.add_parser("add", help="Add mount")
