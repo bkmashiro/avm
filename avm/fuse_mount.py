@@ -374,8 +374,8 @@ class AVMFuse(Operations):
                         entries.append(f"{name}:meta")
                         entries.append(f"{name}:links")
                         entries.append(f"{name}:tags")
-                        # :shared only for /memory/shared/ files
-                        if real_path.startswith("/memory/shared"):
+                        # :shared only if file has shared_with set
+                        if 'shared_with' in node.meta:
                             entries.append(f"{name}:shared")
         
         return entries
