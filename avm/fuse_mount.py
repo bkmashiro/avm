@@ -251,15 +251,15 @@ class AVMFuse(Operations):
                     # Store shortcut in meta
                     node.meta['shortcut'] = shortcut
                     self.vfs.write(node.path, node.content, meta=node.meta)
-                # Generate summary (first line or first 60 chars)
+                # Get filename
+                filename = node.path.split('/')[-1]
+                # Generate summary (first line, skip headers)
                 content = node.content or ''
-                # Skip markdown header markers
                 summary = content.lstrip('#').strip()
-                # Get first line, truncate to 50 chars
-                first_line = summary.split('\n')[0][:50]
-                if len(summary.split('\n')[0]) > 50:
+                first_line = summary.split('\n')[0][:40]
+                if len(summary.split('\n')[0]) > 40:
                     first_line += '...'
-                lines.append(f"@{shortcut}  {first_line}")
+                lines.append(f"@{shortcut}  {filename}  {first_line}")
             return '\n'.join(lines) + '\n' if lines else '\n'
         
         elif suffix == ':stats':
