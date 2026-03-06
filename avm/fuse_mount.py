@@ -463,8 +463,11 @@ def _pid_file(mountpoint: str) -> Path:
 def _is_mounted(mountpoint: str) -> bool:
     """Check if mountpoint is currently mounted."""
     try:
-        result = subprocess.run(['mount'], capture_output=True, text=True)
-        return mountpoint in result.stdout
+        # Use /sbin/mount for macOS compatibility
+        mount_cmd = '/sbin/mount' if os.path.exists('/sbin/mount') else 'mount'
+        result = subprocess.run([mount_cmd], capture_output=True, text=True)
+        # Handle /tmp -> /private/tmp symlink on macOS
+        return mountpoint in result.stdout or mountpoint.replace('/tmp/', '/private/tmp/') in result.stdout
     except Exception:
         return False
 
