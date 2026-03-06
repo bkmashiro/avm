@@ -344,6 +344,18 @@ default_access: ro
 | `script` | Execute commands |
 | `plugin` | Python plugins |
 | `sqlite` | Database queries |
+| `index` | Structured index with status tracking |
+
+### Index Handler
+
+Track project files and extract code signatures:
+
+```bash
+cat /index/code/myapp:scan    # Scan with signature extraction
+cat /index/code/myapp:sigs    # Show function signatures
+cat /index/code/myapp:status  # Check clean/dirty/missing
+echo "300" > /index/code/myapp:watch  # Watch for 5 min
+```
 
 ### Custom Handlers
 
