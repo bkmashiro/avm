@@ -277,6 +277,14 @@ class AVMFuse(Operations):
         
         raise FuseOSError(errno.ENOENT)
     
+    def opendir(self, path):
+        """Open directory."""
+        return 0
+    
+    def releasedir(self, path, fh):
+        """Release directory."""
+        return 0
+    
     def readdir(self, path, fh):
         """List directory contents."""
         real_path, _, _ = self._parse_path(path)
