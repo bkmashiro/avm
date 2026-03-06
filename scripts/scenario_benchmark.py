@@ -315,6 +315,257 @@ def scenario_mixed_content(avm: AVM, tmpdir: Path) -> List[ScenarioResult]:
     ]
 
 
+# ============================================================
+# SCENARIO 5: Multi-turn Conversation
+# ============================================================
+def scenario_conversation(avm: AVM, tmpdir: Path) -> List[ScenarioResult]:
+    """
+    Scenario: Agent in multi-turn conversation, needs to recall earlier context.
+    - 30 conversation turns
+    - User asks about something mentioned 20 turns ago
+    """
+    print("\n💬 Scenario 5: Multi-turn Conversation")
+    print("-" * 40)
+    
+    agent_id = f"conv_{int(_time.time())}"
+    agent = avm.agent_memory(agent_id)
+    files = []
+    
+    # Simulate conversation
+    turns = [
+        "User: Hi, I'm planning to buy a new laptop",
+        "Assistant: What's your budget and use case?",
+        "User: Around $1500, mainly for programming",
+        "Assistant: I recommend MacBook Air M3 or ThinkPad X1 Carbon",
+        "User: What about the MacBook Pro?",
+        "Assistant: MacBook Pro 14 is $1999, above your budget",
+        "User: I also need good battery life",
+        "Assistant: MacBook Air has 18 hours, ThinkPad has 15 hours",
+        "User: Let me think about it. By the way, I'm learning Rust",
+        "Assistant: Great choice! Rust has excellent performance",
+        "User: Any book recommendations for Rust?",
+        "Assistant: The Rust Programming Language (official book) is best",
+        "User: Thanks. I also want to learn about databases",
+        "Assistant: PostgreSQL is popular, also consider SQLite for embedded",
+        "User: What's the difference?",
+        "Assistant: PostgreSQL is client-server, SQLite is embedded file-based",
+        "User: I'll start with SQLite then",
+        "Assistant: Good choice for learning. It's used in many mobile apps",
+        "User: Speaking of mobile, should I learn Swift or Kotlin?",
+        "Assistant: Swift for iOS, Kotlin for Android. Both are modern languages",
+        "User: I have an iPhone so maybe Swift",
+        "Assistant: SwiftUI makes iOS development easier now",
+        "User: Cool. Back to laptops - what was the battery comparison again?",
+    ]
+    
+    for i, turn in enumerate(turns):
+        agent.remember(turn, tags=["conversation", f"turn_{i}"])
+        f = tmpdir / f"turn_{i:02d}.md"
+        f.write_text(turn)
+        files.append(f)
+    
+    # Query about earlier topic
+    query = "laptop battery hours MacBook ThinkPad"
+    max_tokens = 200
+    
+    file_tokens, file_latency = run_file_method(files, query)
+    avm_tokens, avm_latency, quality = run_avm_method(agent, query, max_tokens)
+    
+    savings = (1 - avm_tokens / file_tokens) * 100 if file_tokens > 0 else 0
+    print(f"   Query: '{query}'")
+    print(f"   📁 File: {file_tokens} tokens ({file_latency:.1f}ms)")
+    print(f"   🧠 AVM:  {avm_tokens} tokens ({avm_latency:.1f}ms) [{quality}]")
+    print(f"   💰 Savings: {savings:.1f}%")
+    
+    return [
+        ScenarioResult("conversation", "file", file_tokens, file_latency, "full"),
+        ScenarioResult("conversation", "avm", avm_tokens, avm_latency, quality),
+    ]
+
+
+# ============================================================
+# SCENARIO 6: User Preferences
+# ============================================================
+def scenario_user_preferences(avm: AVM, tmpdir: Path) -> List[ScenarioResult]:
+    """
+    Scenario: Agent remembering user preferences over time.
+    - 50 preference entries
+    - Query about specific preference
+    """
+    print("\n⚙️ Scenario 6: User Preferences")
+    print("-" * 40)
+    
+    agent_id = f"prefs_{int(_time.time())}"
+    agent = avm.agent_memory(agent_id)
+    files = []
+    
+    # Various preferences
+    prefs = [
+        ("timezone", "User timezone is Europe/London"),
+        ("language", "User prefers responses in English"),
+        ("format", "User likes bullet points over paragraphs"),
+        ("tone", "User prefers casual, friendly tone"),
+        ("notifications", "User wants daily summaries at 9am"),
+        ("theme", "User prefers dark mode"),
+        ("units", "User uses metric system"),
+        ("currency", "User's currency is GBP"),
+        ("name", "User's name is Alex"),
+        ("expertise", "User is senior developer"),
+        ("interests", "User interested in AI, blockchain, gaming"),
+        ("food", "User is vegetarian, allergic to nuts"),
+        ("music", "User likes jazz and electronic music"),
+        ("work", "User works at a fintech startup"),
+        ("schedule", "User usually available 10am-6pm"),
+    ]
+    
+    # Add noise
+    for i in range(35):
+        prefs.append((f"pref_{i}", f"Random preference setting {i}"))
+    
+    for i, (category, pref) in enumerate(prefs):
+        agent.remember(pref, tags=["preference", category], importance=0.8)
+        f = tmpdir / f"pref_{i:02d}.md"
+        f.write_text(f"# {category}\n{pref}")
+        files.append(f)
+    
+    # Query specific preference
+    query = "vegetarian food allergic nuts"
+    max_tokens = 150
+    
+    file_tokens, file_latency = run_file_method(files, query)
+    avm_tokens, avm_latency, quality = run_avm_method(agent, query, max_tokens)
+    
+    savings = (1 - avm_tokens / file_tokens) * 100 if file_tokens > 0 else 0
+    print(f"   Query: '{query}'")
+    print(f"   📁 File: {file_tokens} tokens ({file_latency:.1f}ms)")
+    print(f"   🧠 AVM:  {avm_tokens} tokens ({avm_latency:.1f}ms) [{quality}]")
+    print(f"   💰 Savings: {savings:.1f}%")
+    
+    return [
+        ScenarioResult("user_preferences", "file", file_tokens, file_latency, "full"),
+        ScenarioResult("user_preferences", "avm", avm_tokens, avm_latency, quality),
+    ]
+
+
+# ============================================================
+# SCENARIO 7: Error Logs
+# ============================================================
+def scenario_error_logs(avm: AVM, tmpdir: Path) -> List[ScenarioResult]:
+    """
+    Scenario: Finding specific error in large log history.
+    - 500 log entries
+    - Query about specific error
+    """
+    print("\n🔴 Scenario 7: Error Logs")
+    print("-" * 40)
+    
+    agent_id = f"logs_{int(_time.time())}"
+    agent = avm.agent_memory(agent_id)
+    files = []
+    
+    log_types = [
+        ("INFO", "Request processed successfully"),
+        ("INFO", "User logged in"),
+        ("INFO", "Cache hit for key"),
+        ("DEBUG", "Processing batch job"),
+        ("WARN", "Slow query detected"),
+        ("INFO", "Scheduled task completed"),
+    ]
+    
+    # Generate 500 logs
+    for i in range(500):
+        if i == 237:
+            # The specific error we'll search for
+            level, msg = "ERROR", "Payment gateway timeout: Stripe API returned 504 for transaction tx_abc123"
+            tags = ["error", "payment", "stripe", "timeout"]
+        else:
+            level, msg = random.choice(log_types)
+            tags = ["log", level.lower()]
+        
+        content = f"[2024-01-{(i%28)+1:02d} {(i%24):02d}:{(i%60):02d}] {level}: {msg}"
+        agent.remember(content, tags=tags)
+        f = tmpdir / f"log_{i:03d}.md"
+        f.write_text(content)
+        files.append(f)
+    
+    # Query about the specific error
+    query = "payment stripe timeout error 504"
+    max_tokens = 200
+    
+    file_tokens, file_latency = run_file_method(files, query)
+    avm_tokens, avm_latency, quality = run_avm_method(agent, query, max_tokens)
+    
+    savings = (1 - avm_tokens / file_tokens) * 100 if file_tokens > 0 else 0
+    print(f"   Query: '{query}'")
+    print(f"   📁 File: {file_tokens} tokens ({file_latency:.1f}ms)")
+    print(f"   🧠 AVM:  {avm_tokens} tokens ({avm_latency:.1f}ms) [{quality}]")
+    print(f"   💰 Savings: {savings:.1f}%")
+    
+    return [
+        ScenarioResult("error_logs", "file", file_tokens, file_latency, "full"),
+        ScenarioResult("error_logs", "avm", avm_tokens, avm_latency, quality),
+    ]
+
+
+# ============================================================
+# SCENARIO 8: Knowledge Base FAQ
+# ============================================================
+def scenario_faq(avm: AVM, tmpdir: Path) -> List[ScenarioResult]:
+    """
+    Scenario: FAQ knowledge base lookup.
+    - 100 FAQ entries
+    - Query about specific topic
+    """
+    print("\n❓ Scenario 8: Knowledge Base FAQ")
+    print("-" * 40)
+    
+    agent_id = f"faq_{int(_time.time())}"
+    agent = avm.agent_memory(agent_id)
+    files = []
+    
+    faqs = [
+        ("How do I reset my password?", "Go to Settings > Account > Reset Password"),
+        ("What payment methods are accepted?", "We accept Visa, Mastercard, PayPal"),
+        ("How to cancel subscription?", "Go to Billing > Subscriptions > Cancel"),
+        ("Is there a free trial?", "Yes, 14-day free trial for all plans"),
+        ("How to export my data?", "Settings > Data > Export as CSV or JSON"),
+        ("What is the refund policy?", "Full refund within 30 days of purchase"),
+        ("How to enable 2FA?", "Security > Two-Factor > Enable with authenticator app"),
+        ("API rate limits?", "Free: 100/min, Pro: 1000/min, Enterprise: unlimited"),
+        ("How to upgrade plan?", "Billing > Plans > Select new plan"),
+        ("Contact support?", "Email support@company.com or use in-app chat"),
+    ]
+    
+    # Add more FAQs
+    for i in range(90):
+        faqs.append((f"FAQ question {i}?", f"Answer for FAQ {i} with some details"))
+    
+    for i, (q, a) in enumerate(faqs):
+        content = f"Q: {q}\nA: {a}"
+        agent.remember(content, tags=["faq", "support"])
+        f = tmpdir / f"faq_{i:02d}.md"
+        f.write_text(content)
+        files.append(f)
+    
+    # Query
+    query = "refund policy money back"
+    max_tokens = 150
+    
+    file_tokens, file_latency = run_file_method(files, query)
+    avm_tokens, avm_latency, quality = run_avm_method(agent, query, max_tokens)
+    
+    savings = (1 - avm_tokens / file_tokens) * 100 if file_tokens > 0 else 0
+    print(f"   Query: '{query}'")
+    print(f"   📁 File: {file_tokens} tokens ({file_latency:.1f}ms)")
+    print(f"   🧠 AVM:  {avm_tokens} tokens ({avm_latency:.1f}ms) [{quality}]")
+    print(f"   💰 Savings: {savings:.1f}%")
+    
+    return [
+        ScenarioResult("faq", "file", file_tokens, file_latency, "full"),
+        ScenarioResult("faq", "avm", avm_tokens, avm_latency, quality),
+    ]
+
+
 def main():
     print("=" * 60)
     print("Multi-Scenario Benchmark: File Read vs AVM Recall")
@@ -338,13 +589,28 @@ def main():
         
         (tmpdir / "s4").mkdir()
         all_results.extend(scenario_mixed_content(avm, tmpdir / "s4"))
+        
+        (tmpdir / "s5").mkdir()
+        all_results.extend(scenario_conversation(avm, tmpdir / "s5"))
+        
+        (tmpdir / "s6").mkdir()
+        all_results.extend(scenario_user_preferences(avm, tmpdir / "s6"))
+        
+        (tmpdir / "s7").mkdir()
+        all_results.extend(scenario_error_logs(avm, tmpdir / "s7"))
+        
+        (tmpdir / "s8").mkdir()
+        all_results.extend(scenario_faq(avm, tmpdir / "s8"))
     
     # Summary
     print("\n" + "=" * 60)
     print("SUMMARY")
     print("=" * 60)
     
-    scenarios = ["recent_context", "code_exploration", "longterm_memory", "mixed_content"]
+    scenarios = [
+        "recent_context", "code_exploration", "longterm_memory", "mixed_content",
+        "conversation", "user_preferences", "error_logs", "faq"
+    ]
     
     total_file = 0
     total_avm = 0

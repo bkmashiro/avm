@@ -298,9 +298,15 @@ class AVMStore:
         
         Auto-add prefix match (*) for mixed text
         """
-        # Add prefix match for each word
-        terms = query.split()
-        fts_query = " ".join(f"{term}*" for term in terms)
+        # Add prefix match for each word, escape special chars
+        import re
+        # Remove FTS5 special characters
+        clean_query = re.sub(r'[^\w\s]', ' ', query)
+        terms = clean_query.split()
+        if not terms:
+            return []
+        # Use OR to match any term (more inclusive)
+        fts_query = " OR ".join(f"{term}*" for term in terms if term)
         
         with self._conn() as conn:
             # FTS5 BM25 ranking
