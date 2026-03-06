@@ -55,7 +55,7 @@ class AVMFuse(Operations):
     """
     
     # Virtual node suffixes
-    VIRTUAL_SUFFIXES = {':meta', ':links', ':tags', ':history', ':shared'}
+    VIRTUAL_SUFFIXES = {':meta', ':links', ':tags', ':history', ':shared', ':data', ':info'}
     VIRTUAL_DIR_FILES = {':list', ':stats'}
     VIRTUAL_QUERY_PATTERNS = {':search', ':recall'}
     
@@ -87,7 +87,7 @@ class AVMFuse(Operations):
             base = path
             params = None
         
-        # Check for virtual suffix
+        # Check for virtual suffix (colon-prefixed, e.g., :meta)
         for suffix in self.VIRTUAL_SUFFIXES | self.VIRTUAL_DIR_FILES | self.VIRTUAL_QUERY_PATTERNS:
             if base.endswith(suffix):
                 real_path = base[:-len(suffix)]
@@ -122,6 +122,34 @@ class AVMFuse(Operations):
     
     def _get_virtual_content(self, real_path: str, suffix: str, params: dict) -> str:
         """Generate content for virtual nodes."""
+        
+        if suffix == ':data':
+            node = self.vfs.read(real_path)
+            if not node:
+                raise FuseOSError(errno.ENOENT)
+            return node.content or ''
+        
+        if suffix == ':info':
+            # List available virtual suffixes for this file
+            node = self.vfs.read(real_path)
+            if not node:
+                raise FuseOSError(errno.ENOENT)
+            
+            suffixes = [':data']
+            if node.meta:
+                suffixes.append(':meta')
+            try:
+                links = self.vfs.links(real_path, direction="both")
+                if links:
+                    suffixes.append(':links')
+            except Exception:
+                pass
+            if node.meta.get('tags'):
+                suffixes.append(':tags')
+            if 'shared_with' in node.meta:
+                suffixes.append(':shared')
+            
+            return '\n'.join(suffixes) + '\n'
         
         if suffix == ':meta':
             node = self.vfs.read(real_path)
