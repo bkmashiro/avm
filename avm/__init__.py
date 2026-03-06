@@ -40,6 +40,16 @@ from .handlers import (
     handler,  # Decorator for registering handlers with skill info
     HANDLERS,
 )
+from .index_handler import (
+    IndexHandler,
+    IndexStore,
+    IndexEntry,
+    FileEntry,
+    ScanHook,
+    ProjectScanHook,
+    register_scan_hook,
+    SCAN_HOOKS,
+)
 from .permissions import (
     User, Group, Capability, PermBits,
     NodeOwnership, UserRegistry, PermissionManager,
