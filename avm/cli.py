@@ -491,6 +491,59 @@ def cmd_memory_stats(args):
         print(f"Strategy: {stats['config']['strategy']}")
 
 
+def cmd_telemetry(args):
+    """Show operation telemetry"""
+    from .telemetry import get_telemetry
+    
+    telem = get_telemetry()
+    
+    if args.op == "stats":
+        stats = telem.stats(agent=args.agent, since=args.since)
+        if args.json:
+            print(json.dumps(stats, indent=2))
+        else:
+            print(f"Total operations: {stats['total_ops']}")
+            print(f"Error rate: {stats['error_rate']*100:.1f}%")
+            print("\nBy operation:")
+            for op, data in stats['by_op'].items():
+                print(f"  {op}: {data['count']} calls, avg {data['avg_latency_ms']}ms")
+    else:
+        entries = telem.query(
+            agent=args.agent,
+            op=args.op,
+            since=args.since,
+            limit=args.limit
+        )
+        
+        if args.json:
+            print(json.dumps(entries, indent=2))
+        else:
+            for e in entries:
+                status = "✓" if e['success'] else "✗"
+                tokens = f"{e['tokens_in'] or '-'}/{e['tokens_out'] or '-'}"
+                latency = f"{e['latency_ms']:.0f}ms" if e['latency_ms'] else "-"
+                print(f"{status} [{e['ts'][:19]}] {e['op']:10} {e['agent']:12} {tokens:12} {latency}")
+
+
+def cmd_savings(args):
+    """Show token savings from recall operations"""
+    from .telemetry import get_telemetry
+    
+    telem = get_telemetry()
+    savings = telem.token_savings(agent=args.agent, since=args.since)
+    
+    if args.json:
+        print(json.dumps(savings, indent=2))
+    else:
+        print("Token Savings Report")
+        print("====================")
+        print(f"Total recalls: {savings['recalls']}")
+        print(f"Tokens returned: {savings['tokens_returned']:,}")
+        print(f"Tokens available: {savings['tokens_available']:,}")
+        print(f"Tokens saved: {savings['tokens_saved']:,}")
+        print(f"Savings: {savings['savings_pct']}%")
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="AI Virtual Filesystem (config-driven)",
@@ -632,6 +685,19 @@ def main():
     p_mem_stats = subparsers.add_parser("memory-stats", help="Agent memory stats")
     p_mem_stats.add_argument("--agent", "-a", default="default", help="Agent ID")
     p_mem_stats.set_defaults(func=cmd_memory_stats)
+    
+    # Telemetry commands
+    p_telemetry = subparsers.add_parser("telemetry", aliases=["telem"], help="Show operation telemetry")
+    p_telemetry.add_argument("--agent", "-a", help="Filter by agent")
+    p_telemetry.add_argument("--op", help="Filter by operation (recall, remember)")
+    p_telemetry.add_argument("--since", help="Filter since timestamp (ISO format)")
+    p_telemetry.add_argument("--limit", "-n", type=int, default=20, help="Max entries")
+    p_telemetry.set_defaults(func=cmd_telemetry)
+    
+    p_savings = subparsers.add_parser("savings", help="Show token savings from recall")
+    p_savings.add_argument("--agent", "-a", help="Filter by agent")
+    p_savings.add_argument("--since", help="Filter since timestamp (ISO format)")
+    p_savings.set_defaults(func=cmd_savings)
     
     args = parser.parse_args()
     

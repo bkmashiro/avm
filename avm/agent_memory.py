@@ -22,6 +22,7 @@ from .node import AVMNode
 from .core import AVM
 from .retrieval import Retriever
 from .embedding import EmbeddingStore
+from .telemetry import get_telemetry
 
 
 class ScoringStrategy(Enum):
@@ -155,32 +156,43 @@ class AgentMemory:
         max_tokens = max_tokens or self.config.default_max_tokens
         strategy = strategy or self.config.default_strategy
         
-        # 1. Determine search range
-        prefixes = [self.private_prefix]
-        if include_shared:
-            if namespaces:
-                prefixes.extend([f"{self.shared_prefix}/{ns}" for ns in namespaces])
-            else:
-                prefixes.append(self.shared_prefix)
-        
-        # 2. Retrieve candidate nodes
-        candidates = self._retrieve_candidates(query, prefixes, k=50)
-        
-        # 3. permissionfilter
-        candidates = [(n, s) for n, s in candidates if self._can_read(n.path)]
-        
-        # 4. score
-        scored = self._score_nodes(candidates, query, strategy)
-        
-        # 5. Select within token budget
-        selected = self._select_within_budget(scored, max_tokens)
-        
-        # 6. versionmerge（ifenable）
-        if merge_versions and hasattr(self.avm, '_versioned_memory'):
-            selected = self._merge_versions_in_results(selected)
-        
-        # 7. Generate compact output
-        return self._compact_synthesis(selected, query, max_tokens, strategy)
+        telemetry = get_telemetry()
+        with telemetry.track("recall", self.agent_id, query=query) as t:
+            # 1. Determine search range
+            prefixes = [self.private_prefix]
+            if include_shared:
+                if namespaces:
+                    prefixes.extend([f"{self.shared_prefix}/{ns}" for ns in namespaces])
+                else:
+                    prefixes.append(self.shared_prefix)
+            
+            # 2. Retrieve candidate nodes
+            candidates = self._retrieve_candidates(query, prefixes, k=50)
+            
+            # 3. permissionfilter
+            candidates = [(n, s) for n, s in candidates if self._can_read(n.path)]
+            
+            # 4. score
+            scored = self._score_nodes(candidates, query, strategy)
+            
+            # Track total available tokens
+            total_available = sum(self._estimate_tokens(s.node.content or "") for s in scored)
+            t["tokens_out"] = total_available
+            
+            # 5. Select within token budget
+            selected = self._select_within_budget(scored, max_tokens)
+            
+            # 6. versionmerge（ifenable）
+            if merge_versions and hasattr(self.avm, '_versioned_memory'):
+                selected = self._merge_versions_in_results(selected)
+            
+            # Track returned tokens and results
+            t["results"] = len(selected)
+            tokens_returned = sum(self._estimate_tokens(s.node.content or "") for s in selected)
+            t["tokens_in"] = tokens_returned
+            
+            # 7. Generate compact output
+            return self._compact_synthesis(selected, query, max_tokens, strategy)
     
     def _merge_versions_in_results(self, scored: List[ScoredNode]) -> List[ScoredNode]:
         """Merge multiple versions of same base_path"""
@@ -375,6 +387,8 @@ class AgentMemory:
             namespace: shared namespace (e.g., "market", "projects")
             path: specifiedpath（for append-only update）
         """
+        telemetry = get_telemetry()
+        
         # Determine target path
         if path:
             target_path = path
@@ -388,40 +402,45 @@ class AgentMemory:
             filename = f"{timestamp}_{slug}.md" if slug else f"{timestamp}.md"
             target_path = f"{self.private_prefix}/{filename}"
         
-        # Check write permission
-        if not self._can_write(target_path):
-            raise PermissionError(f"Agent {self.agent_id} cannot write to {target_path}")
-        
-        # Check quota
-        self._check_quota()
-        
-        # Format content
-        full_content = self._format_content(content, title, tags)
-        
-        meta = {
-            "importance": importance,
-            "tags": tags or [],
-            "source": source,
-            "author": self.agent_id,
-        }
-        
-        # Use versioned write (if updating existing path)
-        if path and hasattr(self.avm, '_versioned_memory'):
-            node = self.avm._versioned_memory.write_version(
-                path, full_content, self.agent_id, meta
-            )
-        else:
-            node = self.avm.write(target_path, full_content, meta)
-        
-        # recordauditlog
-        self._log_operation("write", node.path)
-        
-        # Check for similar content (after write)
-        similar = []
-        if self.config.duplicate_check:
-            similar = self._find_similar(content, exclude_path=node.path)
-        
-        return RememberResult(node=node, similar=similar)
+        with telemetry.track("remember", self.agent_id, path=target_path) as t:
+            # Check write permission
+            if not self._can_write(target_path):
+                raise PermissionError(f"Agent {self.agent_id} cannot write to {target_path}")
+            
+            # Check quota
+            self._check_quota()
+            
+            # Format content
+            full_content = self._format_content(content, title, tags)
+            
+            # Track tokens
+            t["tokens_in"] = self._estimate_tokens(content)
+            
+            meta = {
+                "importance": importance,
+                "tags": tags or [],
+                "source": source,
+                "author": self.agent_id,
+            }
+            
+            # Use versioned write (if updating existing path)
+            if path and hasattr(self.avm, '_versioned_memory'):
+                node = self.avm._versioned_memory.write_version(
+                    path, full_content, self.agent_id, meta
+                )
+            else:
+                node = self.avm.write(target_path, full_content, meta)
+            
+            # recordauditlog
+            self._log_operation("write", node.path)
+            
+            # Check for similar content (after write)
+            similar = []
+            if self.config.duplicate_check:
+                similar = self._find_similar(content, exclude_path=node.path)
+            
+            t["results"] = 1
+            return RememberResult(node=node, similar=similar)
     
     def _find_similar(self, content: str, exclude_path: str = None, 
                        limit: int = 3) -> List[SimilarMatch]:
