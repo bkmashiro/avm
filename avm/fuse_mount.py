@@ -739,16 +739,28 @@ class AVMFuse(Operations):
         """Write to file."""
         real_path, suffix, _ = self._parse_path(path)
         
-        # Buffer writes
+        # Buffer writes - load existing content if not already buffered
         if fh not in self._write_buffers:
-            self._write_buffers[fh] = b''
+            if not suffix:
+                node = self.vfs.read(real_path)
+                if node and node.content:
+                    self._write_buffers[fh] = node.content.encode('utf-8')
+                else:
+                    self._write_buffers[fh] = b''
+            else:
+                self._write_buffers[fh] = b''
         
         # Handle offset
         buf = self._write_buffers[fh]
         if offset < len(buf):
-            buf = buf[:offset] + data
+            # Insert/overwrite at position
+            buf = buf[:offset] + data + buf[offset + len(data):]
+        elif offset == len(buf):
+            # Append at end
+            buf = buf + data
         else:
-            buf = buf + b'\x00' * (offset - len(buf)) + data
+            # Gap - fill with spaces (not nulls)
+            buf = buf + b' ' * (offset - len(buf)) + data
         
         self._write_buffers[fh] = buf
         return len(data)
@@ -777,8 +789,18 @@ class AVMFuse(Operations):
     
     def open(self, path, flags):
         """Open a file."""
+        import os as _os
         self.fd += 1
         self._open_files[self.fd] = path
+        
+        # Handle O_APPEND: pre-load existing content to buffer
+        if flags & _os.O_APPEND:
+            real_path, suffix, _ = self._parse_path(path)
+            if not suffix:
+                node = self.vfs.read(real_path)
+                if node and node.content:
+                    self._write_buffers[self.fd] = node.content.encode('utf-8')
+        
         return self.fd
     
     def release(self, path, fh):
