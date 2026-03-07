@@ -5,6 +5,13 @@ import os
 from pathlib import Path
 from unittest.mock import patch, MagicMock
 
+# Skip if fuse not available
+try:
+    import fuse
+    HAS_FUSE = True
+except (ImportError, OSError):
+    HAS_FUSE = False
+
 
 class TestDaemonConfig:
     """Test daemon configuration."""
@@ -85,6 +92,7 @@ class TestMountProcess:
         assert proc.pid is None
 
 
+@pytest.mark.skipif(not HAS_FUSE, reason="libfuse not available")
 class TestAVMDaemon:
     """Test AVMDaemon class."""
     
