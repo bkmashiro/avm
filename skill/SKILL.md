@@ -142,6 +142,7 @@ avm/
 
 1. **Write in English** - FTS has no Chinese tokenizer; English searches work better
 2. **Use recall, not search** - `cat avm/:recall?q=...` ranks by relevance + importance
+3. **Use delta for collaboration** - `cat shared/file.md:delta` shows only changes since last read
 2. **Set importance** - High importance memories surface first
 3. **Use tags** - Add tags via file content: `tags: [trading, risk]`
 4. **Link memories** - Use `avm link` to build knowledge graph

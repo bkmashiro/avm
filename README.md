@@ -42,6 +42,7 @@ trader.recall("market patterns")  # sees analyst's shared memory
 **Best for:**
 - 📦 **Shared knowledge** — Company docs, cron configs, market analysis that multiple agents access
 - 🤝 **Multi-agent collaboration** — Agent A writes analysis, Agent B recalls it
+- 🔄 **Incremental sync** — Read only changes since last read with `:delta`
 - 🗂️ **External references** — Paths, schedules, entity descriptions (not file content itself)
 
 **Not needed for:**
@@ -134,6 +135,22 @@ trader.recall("market patterns")  # sees analyst's shared memory
 
 📌 Trader stats: Private: 3
 📌 Analyst stats: Private: 1
+
+============================================================
+  6. INCREMENTAL COLLABORATION
+============================================================
+# Analyst updates shared report
+$ echo "New finding" >> /shared/report.md
+
+# Trader reads only the changes
+$ cat /shared/report.md:delta
+# v3 (2026-03-07 10:30)
+--- +++ @@ -5 +5,2 @@
++New finding
+
+# Next read shows no changes
+$ cat /shared/report.md:delta
+(no changes)
 
 ============================================================
   6. METADATA & TAGS
@@ -432,6 +449,8 @@ Access metadata via special suffixes:
 | `:list?q=keyword` | Search + list | - |
 | `:list?tag=xxx` | Filter by tag | - |
 | `:changes?minutes=N` | Recently modified files | - |
+| `:delta` | Diff since last read (auto-marks) | - |
+| `:mark` | Read position (version) | Update marker |
 | `:stats` | Statistics | - |
 | `:search?q=` | Search results | - |
 | `:recall?q=` | Token-aware recall | - |
