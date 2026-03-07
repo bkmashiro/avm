@@ -29,7 +29,6 @@ dev = ["pytest", "pytest-cov"]
 [project.scripts]
 avm = "avm.cli:main"
 avm-mcp = "avm.mcp_server:main"
-avm-mount = "avm.fuse_mount:main"
 avm-daemon = "avm.daemon:main"
 
 [tool.hatch.build.targets.wheel]

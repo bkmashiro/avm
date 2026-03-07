@@ -218,17 +218,23 @@ Mount AVM as a filesystem for shell access.
 - Linux: `apt install fuse3`
 
 ```bash
-# Mount in foreground
-avm-mount mount /mnt/avm
+# Configure mounts in ~/.config/avm/mounts.yaml
+# Example:
+#   mounts:
+#     - mountpoint: ~/.openclaw/workspace/avm
+#       agent_id: myagent
 
-# Mount as daemon (background)
-avm-mount mount /mnt/avm --daemon
+# Start daemon (manages all mounts)
+avm-daemon start --daemon
 
 # Check status
-avm-mount status
+avm-daemon status
+
+# Reload config
+avm-daemon reload
 
 # Stop daemon
-avm-mount stop /mnt/avm
+avm-daemon stop
 
 # Use standard shell commands
 ls /mnt/avm/memory/
