@@ -707,6 +707,15 @@ class AVMFuse(Operations):
                         raise FuseOSError(errno.ENOENT)  # Expired = not found
                 except (ValueError, TypeError):
                     pass
+            
+            # Auto-mark as read for shared files
+            if self.user and '/shared/' in real_path:
+                last_read = node.meta.get('last_read', {})
+                if last_read.get(self.user) != node.version:
+                    last_read[self.user] = node.version
+                    node.meta['last_read'] = last_read
+                    self.vfs.store.put_node(node, save_diff=False)
+            
             content = node.content or ''
         
         encoded = content.encode('utf-8')
