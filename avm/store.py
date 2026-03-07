@@ -165,7 +165,12 @@ class AVMStore:
             if existing:
                 # Update
                 old_h = existing.content_h
-                new_version = existing.version + 1
+                
+                # Only bump version if content changed
+                if old_h != new_h:
+                    new_version = existing.version + 1
+                else:
+                    new_version = existing.version
                 
                 if save_diff and old_h != new_h:
                     # Save diff

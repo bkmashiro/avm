@@ -55,7 +55,7 @@ class AVMFuse(Operations):
     """
     
     # Virtual node suffixes
-    VIRTUAL_SUFFIXES = {':meta', ':links', ':tags', ':history', ':shared', ':data', ':info', ':path', ':ttl'}
+    VIRTUAL_SUFFIXES = {':meta', ':links', ':tags', ':history', ':shared', ':data', ':info', ':path', ':ttl', ':delta', ':mark'}
     VIRTUAL_DIR_FILES = {':list', ':stats'}
     VIRTUAL_QUERY_PATTERNS = {':search', ':recall', ':changes'}
     
@@ -176,6 +176,55 @@ class AVMFuse(Operations):
             # Return path relative to mount point (without leading /)
             rel_path = real_path.lstrip('/')
             return f"{rel_path}\n"
+        
+        if suffix == ':delta':
+            # Return diff since last read by this agent (read-only, doesn't update marker)
+            if not self.user:
+                return '(no agent context)\n'
+            
+            node = self.vfs.read(real_path)
+            if not node:
+                raise FuseOSError(errno.ENOENT)
+            
+            current_version = node.version
+            last_read = node.meta.get('last_read', {})
+            last_version = last_read.get(self.user, 0)
+            
+            if last_version == 0:
+                return f'(never read, current v{current_version})\n'
+            
+            if last_version >= current_version:
+                return '(no changes)\n'
+            
+            # Get diffs from last_version to current
+            history = self.vfs.history(real_path, limit=100)
+            
+            # Collect diffs for versions > last_version
+            diffs = []
+            for h in reversed(history):  # oldest first
+                if h.version > last_version:
+                    if h.diff_content and h.change_type == 'update':
+                        diffs.append(f"# v{h.version} ({h.changed_at.strftime('%Y-%m-%d %H:%M')})\n{h.diff_content}")
+            
+            if not diffs:
+                return f'(changed but no diff, v{last_version}→v{current_version})\n'
+            
+            return '\n'.join(diffs) + '\n'
+        
+        if suffix == ':mark':
+            # Show current read marker for this agent
+            if not self.user:
+                return '(no agent context)\n'
+            
+            node = self.vfs.read(real_path)
+            if not node:
+                raise FuseOSError(errno.ENOENT)
+            
+            last_read = node.meta.get('last_read', {})
+            last_version = last_read.get(self.user, 0)
+            current_version = node.version
+            
+            return f'marked: v{last_version}, current: v{current_version}\n'
         
         if suffix == ':ttl':
             node = self.vfs.read(real_path)
@@ -425,6 +474,23 @@ class AVMFuse(Operations):
                     target = parts[0]
                     rel_type = parts[1] if len(parts) > 1 else 'related'
                     self.vfs.link(real_path, target, rel_type)
+            return True
+        
+        elif suffix == ':mark':
+            # Update read marker to current version
+            if not self.user:
+                raise FuseOSError(errno.EACCES)
+            
+            node = self.vfs.read(real_path)
+            if not node:
+                raise FuseOSError(errno.ENOENT)
+            
+            last_read = node.meta.get('last_read', {})
+            last_read[self.user] = node.version
+            node.meta['last_read'] = last_read
+            
+            # Write without triggering diff (content unchanged)
+            self.vfs.store.put_node(node, save_diff=False)
             return True
         
         elif suffix == ':ttl':
