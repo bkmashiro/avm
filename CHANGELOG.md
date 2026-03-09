@@ -15,7 +15,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `/:inbox` virtual file to view all messages
   - `/tell/<agent>` path for sending messages
   - Expiration support and read tracking
-  - 18 new tests for tell functionality
+- **Hook System**: Notifications when tells are sent
+  - Shell hooks: Execute command on tell
+  - HTTP hooks: POST to webhook URL
+  - OpenClaw hooks: Send via sessions_send
+  - Config-driven via `hooks.yaml`
+- 27 new tests for tell + hook functionality (219 total)
 
 ### Usage
 ```bash
@@ -28,6 +33,19 @@ cat avm/:inbox
 
 # Mark all as read
 cat avm/:inbox?mark=read
+```
+
+### Hook Config Example
+```yaml
+hooks:
+  kearsarge:
+    on_tell:
+      type: shell
+      target: "openclaw notify kearsarge"
+  yuze:
+    on_tell:
+      type: http
+      target: "http://localhost:3000/webhook"
 ```
 
 ## [1.0.0] - 2026-03-06

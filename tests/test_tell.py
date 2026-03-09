@@ -7,7 +7,10 @@ import tempfile
 import os
 from datetime import datetime, timezone, timedelta
 
-from avm.tell import TellStore, TellPriority, Tell, format_inbox, format_tells_for_injection
+from avm.tell import (
+    TellStore, TellPriority, Tell, format_inbox, format_tells_for_injection,
+    HookType, HookConfig, HookManager, get_hook_manager, set_hook_manager
+)
 
 
 @pytest.fixture
@@ -270,3 +273,129 @@ class TestTellDataclass:
         assert '🔴' in header  # Urgent emoji
         assert 'alice' in header
         assert 'Important!' in header
+
+
+class TestHookManager:
+    """Test HookManager for tell notifications"""
+    
+    def test_create_manager(self):
+        """Test creating empty manager"""
+        manager = HookManager()
+        assert manager.get_hook('bob') is None
+    
+    def test_register_hook(self):
+        """Test registering a hook"""
+        manager = HookManager()
+        hook = HookConfig(type=HookType.SHELL, target="echo hello")
+        manager.register('bob', hook)
+        
+        assert manager.get_hook('bob') is not None
+        assert manager.get_hook('bob').type == HookType.SHELL
+    
+    def test_load_config(self):
+        """Test loading hooks from config dict"""
+        config = {
+            'hooks': {
+                'bob': {
+                    'on_tell': {
+                        'type': 'shell',
+                        'target': 'echo ${from} said ${content}'
+                    }
+                },
+                'alice': {
+                    'on_tell': 'echo simple command'  # Simple format
+                }
+            }
+        }
+        
+        manager = HookManager(config)
+        
+        assert manager.get_hook('bob') is not None
+        assert manager.get_hook('bob').type == HookType.SHELL
+        assert manager.get_hook('alice') is not None
+    
+    def test_trigger_shell_hook(self):
+        """Test triggering a shell hook"""
+        manager = HookManager()
+        hook = HookConfig(type=HookType.SHELL, target="echo 'received'")
+        manager.register('bob', hook)
+        
+        tell = Tell(
+            id=1,
+            from_agent='alice',
+            to_agent='bob',
+            content='Hello',
+            priority=TellPriority.NORMAL,
+            created_at='2026-03-09T10:00:00+00:00'
+        )
+        
+        results = manager.trigger(tell)
+        
+        assert 'bob' in results
+        assert results['bob']['success'] is True
+    
+    def test_trigger_broadcast(self):
+        """Test triggering hooks for broadcast"""
+        manager = HookManager()
+        manager.register('bob', HookConfig(type=HookType.SHELL, target="echo bob"))
+        manager.register('alice', HookConfig(type=HookType.SHELL, target="echo alice"))
+        
+        tell = Tell(
+            id=1,
+            from_agent='charlie',
+            to_agent='@all',
+            content='Broadcast',
+            priority=TellPriority.NORMAL,
+            created_at='2026-03-09T10:00:00+00:00'
+        )
+        
+        results = manager.trigger(tell)
+        
+        assert 'bob' in results
+        assert 'alice' in results
+    
+    def test_disabled_hook(self):
+        """Test that disabled hooks are not triggered"""
+        manager = HookManager()
+        hook = HookConfig(type=HookType.SHELL, target="echo hello", enabled=False)
+        manager.register('bob', hook)
+        
+        tell = Tell(
+            id=1,
+            from_agent='alice',
+            to_agent='bob',
+            content='Hello',
+            priority=TellPriority.NORMAL,
+            created_at='2026-03-09T10:00:00+00:00'
+        )
+        
+        results = manager.trigger(tell)
+        
+        assert 'bob' not in results  # Not triggered because disabled
+    
+    def test_unregister_hook(self):
+        """Test unregistering a hook"""
+        manager = HookManager()
+        hook = HookConfig(type=HookType.SHELL, target="echo hello")
+        manager.register('bob', hook)
+        
+        assert manager.get_hook('bob') is not None
+        
+        manager.unregister('bob')
+        
+        assert manager.get_hook('bob') is None
+
+
+class TestHookConfig:
+    """Test HookConfig dataclass"""
+    
+    def test_from_string_type(self):
+        """Test creating config with string type"""
+        config = HookConfig(type='shell', target='echo hello')
+        assert config.type == HookType.SHELL
+    
+    def test_defaults(self):
+        """Test default values"""
+        config = HookConfig(type=HookType.SHELL, target='echo')
+        assert config.enabled is True
+        assert config.timeout == 10

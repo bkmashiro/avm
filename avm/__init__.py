@@ -65,7 +65,9 @@ from .permissions import (
 )
 from .tell import (
     Tell, TellStore, TellPriority,
-    format_inbox, format_tells_for_injection
+    format_inbox, format_tells_for_injection,
+    HookType, HookConfig, HookManager,
+    get_hook_manager, set_hook_manager, configure_hooks
 )
 
 __all__ = [
@@ -126,4 +128,11 @@ __all__ = [
     "TellPriority",
     "format_inbox",
     "format_tells_for_injection",
+    # Hooks
+    "HookType",
+    "HookConfig",
+    "HookManager",
+    "get_hook_manager",
+    "set_hook_manager",
+    "configure_hooks",
 ]

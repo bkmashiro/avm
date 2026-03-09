@@ -9,6 +9,11 @@ Priority levels:
 - normal: Shown when reading /:inbox or /tell/@me
 - low: Only shown when explicitly reading /:inbox
 
+Hooks:
+- Shell: Execute command when tell is sent
+- HTTP: POST to webhook URL
+- OpenClaw: Send via sessions_send
+
 Usage:
     # Write a tell
     echo "important message" > avm/tell/kearsarge?priority=urgent
@@ -134,7 +139,7 @@ class TellStore:
             
             tell_id = cursor.lastrowid
             
-            return Tell(
+            tell = Tell(
                 id=tell_id,
                 from_agent=from_agent,
                 to_agent=to_agent,
@@ -145,6 +150,15 @@ class TellStore:
                 ack_required=ack_required,
                 meta=meta or {}
             )
+        
+        # Trigger hooks (outside transaction)
+        try:
+            hook_manager = get_hook_manager()
+            hook_manager.trigger(tell)
+        except Exception:
+            pass  # Don't fail send if hook fails
+        
+        return tell
     
     def get_unread(self, agent_id: str, priority: TellPriority = None,
                    include_broadcast: bool = True) -> List[Tell]:
@@ -310,3 +324,233 @@ def format_inbox(tells: List[Tell], show_read: bool = False) -> str:
             lines.append("")
     
     return "\n".join(lines)
+
+
+# ============================================================
+# Hook System
+# ============================================================
+
+class HookType(Enum):
+    """Types of hooks that can be triggered"""
+    SHELL = "shell"     # Execute shell command
+    HTTP = "http"       # POST to webhook URL
+    OPENCLAW = "openclaw"  # Send via OpenClaw sessions_send
+
+
+@dataclass
+class HookConfig:
+    """Configuration for a single hook"""
+    type: HookType
+    target: str  # Command, URL, or session key
+    enabled: bool = True
+    timeout: int = 10  # seconds
+    
+    def __post_init__(self):
+        if isinstance(self.type, str):
+            self.type = HookType(self.type)
+
+
+class HookManager:
+    """
+    Manages hooks for tell notifications.
+    
+    Config example (in avm.yaml or hooks.yaml):
+    ```yaml
+    hooks:
+      kearsarge:
+        on_tell:
+          type: shell
+          target: "openclaw notify kearsarge"
+      yuze:
+        on_tell:
+          type: http
+          target: "http://localhost:3000/webhook"
+      akashi:
+        on_tell:
+          type: openclaw
+          target: "agent:akashi"
+    ```
+    """
+    
+    def __init__(self, config: Dict[str, Dict] = None):
+        self._hooks: Dict[str, HookConfig] = {}
+        if config:
+            self._load_config(config)
+    
+    def _load_config(self, config: Dict):
+        """Load hooks from config dict"""
+        hooks_config = config.get('hooks', {})
+        for agent_id, agent_hooks in hooks_config.items():
+            if 'on_tell' in agent_hooks:
+                hook_data = agent_hooks['on_tell']
+                if isinstance(hook_data, str):
+                    # Simple format: just a command
+                    self._hooks[agent_id] = HookConfig(
+                        type=HookType.SHELL,
+                        target=hook_data
+                    )
+                elif isinstance(hook_data, dict):
+                    self._hooks[agent_id] = HookConfig(
+                        type=HookType(hook_data.get('type', 'shell')),
+                        target=hook_data['target'],
+                        enabled=hook_data.get('enabled', True),
+                        timeout=hook_data.get('timeout', 10)
+                    )
+    
+    def register(self, agent_id: str, hook: HookConfig):
+        """Register a hook for an agent"""
+        self._hooks[agent_id] = hook
+    
+    def unregister(self, agent_id: str):
+        """Unregister a hook"""
+        self._hooks.pop(agent_id, None)
+    
+    def get_hook(self, agent_id: str) -> Optional[HookConfig]:
+        """Get hook config for an agent"""
+        return self._hooks.get(agent_id)
+    
+    def trigger(self, tell: Tell) -> Dict[str, Any]:
+        """
+        Trigger hooks for a tell.
+        Returns results for each triggered hook.
+        """
+        results = {}
+        
+        # Get agents to notify
+        agents_to_notify = []
+        if tell.to_agent == '@all':
+            # Trigger all registered hooks
+            agents_to_notify = list(self._hooks.keys())
+        elif tell.to_agent in self._hooks:
+            agents_to_notify = [tell.to_agent]
+        
+        for agent_id in agents_to_notify:
+            hook = self._hooks.get(agent_id)
+            if not hook or not hook.enabled:
+                continue
+            
+            try:
+                result = self._execute_hook(hook, tell, agent_id)
+                results[agent_id] = {"success": True, "result": result}
+            except Exception as e:
+                results[agent_id] = {"success": False, "error": str(e)}
+        
+        return results
+    
+    def _execute_hook(self, hook: HookConfig, tell: Tell, agent_id: str) -> Any:
+        """Execute a single hook"""
+        if hook.type == HookType.SHELL:
+            return self._execute_shell(hook, tell, agent_id)
+        elif hook.type == HookType.HTTP:
+            return self._execute_http(hook, tell)
+        elif hook.type == HookType.OPENCLAW:
+            return self._execute_openclaw(hook, tell, agent_id)
+        else:
+            raise ValueError(f"Unknown hook type: {hook.type}")
+    
+    def _execute_shell(self, hook: HookConfig, tell: Tell, agent_id: str) -> str:
+        """Execute shell command"""
+        import subprocess
+        import shlex
+        
+        # Expand variables in command
+        cmd = hook.target
+        cmd = cmd.replace('${from}', tell.from_agent)
+        cmd = cmd.replace('${to}', agent_id)
+        cmd = cmd.replace('${priority}', tell.priority.value)
+        cmd = cmd.replace('${content}', shlex.quote(tell.content[:100]))
+        
+        result = subprocess.run(
+            cmd,
+            shell=True,
+            capture_output=True,
+            timeout=hook.timeout,
+            text=True
+        )
+        
+        if result.returncode != 0:
+            raise RuntimeError(f"Command failed: {result.stderr}")
+        
+        return result.stdout.strip()
+    
+    def _execute_http(self, hook: HookConfig, tell: Tell) -> Dict:
+        """POST to webhook URL"""
+        import urllib.request
+        import urllib.error
+        
+        payload = json.dumps({
+            "type": "tell",
+            "from": tell.from_agent,
+            "to": tell.to_agent,
+            "content": tell.content,
+            "priority": tell.priority.value,
+            "created_at": tell.created_at
+        }).encode('utf-8')
+        
+        req = urllib.request.Request(
+            hook.target,
+            data=payload,
+            headers={'Content-Type': 'application/json'},
+            method='POST'
+        )
+        
+        try:
+            with urllib.request.urlopen(req, timeout=hook.timeout) as resp:
+                return {"status": resp.status, "body": resp.read().decode()}
+        except urllib.error.HTTPError as e:
+            raise RuntimeError(f"HTTP {e.code}: {e.reason}")
+        except urllib.error.URLError as e:
+            raise RuntimeError(f"URL error: {e.reason}")
+    
+    def _execute_openclaw(self, hook: HookConfig, tell: Tell, agent_id: str) -> str:
+        """
+        Send notification via OpenClaw.
+        Requires openclaw CLI to be available.
+        """
+        import subprocess
+        
+        message = f"📬 New message from {tell.from_agent}:\n{tell.content}"
+        
+        # Use openclaw CLI to send
+        cmd = [
+            "openclaw", "send",
+            "--to", hook.target,
+            "--message", message
+        ]
+        
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            timeout=hook.timeout,
+            text=True
+        )
+        
+        if result.returncode != 0:
+            # Fallback: try sessions_send via API if available
+            raise RuntimeError(f"OpenClaw send failed: {result.stderr}")
+        
+        return "sent"
+
+
+# Global hook manager (can be configured at startup)
+_hook_manager: Optional[HookManager] = None
+
+
+def get_hook_manager() -> HookManager:
+    """Get or create the global hook manager"""
+    global _hook_manager
+    if _hook_manager is None:
+        _hook_manager = HookManager()
+    return _hook_manager
+
+
+def set_hook_manager(manager: HookManager):
+    """Set the global hook manager"""
+    global _hook_manager
+    _hook_manager = manager
+
+
+def configure_hooks(config: Dict):
+    """Configure hooks from a config dict"""
+    global _hook_manager
+    _hook_manager = HookManager(config)
